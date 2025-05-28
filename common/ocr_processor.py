@@ -9,6 +9,9 @@ from typing import List, Dict, Any, Optional
 # from openai import OpenAI  # OpenAIは使用しない
 from PIL import Image
 import io
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
 # Google Document AI imports

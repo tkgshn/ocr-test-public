@@ -11,10 +11,16 @@ from datetime import datetime
 import io
 import time
 
-from section_analyzer import SectionAnalyzer, SectionInfo, SectionBounds
-from ocr_processor import OCRProcessor
-from text_corrector import TextCorrector
-from ocr_visualizer import OCRVisualizer
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'common'))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'phase1'))
+
+from phase2.section_analyzer import SectionAnalyzer, SectionInfo, SectionBounds
+from common.ocr_processor import OCRProcessor
+from phase1.text_corrector import TextCorrector
+from common.ocr_visualizer import OCRVisualizer
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)

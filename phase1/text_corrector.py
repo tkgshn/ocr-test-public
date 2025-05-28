@@ -5,6 +5,9 @@ OCR結果の誤認識を修正する
 import json
 from typing import List, Dict, Any, Optional
 from openai import OpenAI
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
 
