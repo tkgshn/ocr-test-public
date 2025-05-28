@@ -295,7 +295,7 @@ class MultiSectionProcessor:
                     "修正されたテキスト:",
                     value=original_text,
                     height=200,
-                    key=f"correction_{selected_section.id}_{int(time.time() * 1000000) % 1000000}"
+                    key=f"correction_{selected_section.id}"
                 )
 
                 # カテゴリ修正
@@ -304,7 +304,7 @@ class MultiSectionProcessor:
                     ['課題', '提案', '対象', '効果', '実現性', 'その他'],
                     index=['課題', '提案', '対象', '効果', '実現性', 'その他'].index(selected_section.category)
                     if selected_section.category in ['課題', '提案', '対象', '効果', '実現性', 'その他'] else 5,
-                    key=f"category_{selected_section.id}_{int(time.time() * 1000000) % 1000000}"
+                    key=f"category_{selected_section.id}"
                 )
 
                 # 修正適用ボタン

@@ -16,6 +16,9 @@ from markdown_formatter import MarkdownFormatter
 from ocr_visualizer import OCRVisualizer
 from multi_section_processor import MultiSectionProcessor
 import time
+import hashlib
+from PIL import Image
+import io
 
 
 def check_api_key() -> bool:
@@ -173,6 +176,75 @@ def display_field_comparison(field_name: str, original_text: str, corrected_text
         st.markdown(details_html, unsafe_allow_html=True)
 
 
+def correct_and_organize_text(edited_data: dict) -> Dict[str, Any]:
+    """
+    編集されたテキストをAIで修正・整理する
+
+    Args:
+        edited_data: 編集されたテキストデータ
+
+    Returns:
+        修正・整理された結果
+    """
+    try:
+        # TextCorrector と DataOrganizer のインスタンス化
+        corrector = TextCorrector()
+        organizer = DataOrganizer()
+
+        # テキストを一つの辞書として整形
+        ocr_data = {
+            "text": "\n".join([f"{k}: {v}" for k, v in edited_data.items() if v]),
+            "categories": edited_data
+        }
+
+        # OCR結果として整形
+        ocr_result = {
+            "success": True,
+            "data": ocr_data,
+            "source": "manual_edit"
+        }
+
+        # テキスト修正
+        correction_result = corrector.correct_single_result(ocr_result)
+
+        if correction_result.get("success"):
+            # 修正されたデータを整理
+            corrected_data = correction_result.get("data", {})
+
+            # データを適切な形式に変換
+            if isinstance(corrected_data, dict):
+                items_to_organize = [corrected_data]
+            else:
+                items_to_organize = corrected_data if isinstance(corrected_data, list) else [corrected_data]
+
+            # 課題ベースで整理
+            organization_result = organizer.organize_data(items_to_organize)
+            if organization_result.get("success"):
+                organized_data = organization_result["data"]
+            else:
+                organized_data = []
+
+            return {
+                "success": True,
+                "corrected_data": corrected_data,
+                "organized_data": organized_data,
+                "original_data": edited_data
+            }
+        else:
+            return {
+                "success": False,
+                "error": correction_result.get("error", "修正処理に失敗しました"),
+                "original_data": edited_data
+            }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "original_data": edited_data
+        }
+
+
 def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], correction_result: Dict[str, Any], index: int):
     """
     画像、OCR結果、修正結果を並べて表示
@@ -317,7 +389,7 @@ def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], 
                                         if max_confidence > 0:
                                             confidence_info = f" (信頼度: {max_confidence:.2%})"
                                         # 一意のキーを生成
-                                        paragraph_key = f"paragraph_{index}_{category}_{int(time.time() * 1000000) % 1000000}"
+                                        paragraph_key = f"paragraph_{index}_{category}"
                                         # 編集可能なテキストエリア
                                         edited_text = st.text_area(
                                             f"{icon} {category}{confidence_info}",
@@ -336,7 +408,7 @@ def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], 
                                         }
                                     else:
                                         # 空のテキストエリア
-                                        paragraph_key = f"paragraph_{index}_{category}_empty_{int(time.time() * 1000000) % 1000000}"
+                                        paragraph_key = f"paragraph_{index}_{category}_empty"
                                         edited_text = st.text_area(
                                             f"{icon} {category}",
                                             "",
@@ -370,7 +442,7 @@ def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], 
                                 # すべてのフィールドを表示（空のフィールドも含む、順序通り）
                                 for field_key, display_label in field_mapping:
                                     # 一意のキーを生成
-                                    unique_key = f"ocr_{index}_{i}_{field_key}_{int(time.time() * 1000000) % 1000000}"
+                                    unique_key = f"ocr_{index}_{i}_{field_key}"
                                     # 値を取得（存在しない場合は空文字）
                                     display_value = ""
                                     if field_key in item:
@@ -403,7 +475,7 @@ def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], 
                 except json.JSONDecodeError as e:
                     st.error(f"OCR結果のJSONパースに失敗しました: {str(e)}")
                     if "raw_text" in ocr_result:
-                        raw_key = f"raw_ocr_{index}_{int(time.time() * 1000000) % 1000000}"
+                        raw_key = f"raw_ocr_{index}"
                         st.text_area("生のOCR結果", ocr_result["raw_text"], height=200, key=raw_key)
             else:
                 st.warning("OCRデータが見つかりません")
@@ -419,12 +491,12 @@ def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], 
                 display_error = str(error_msg).encode('utf-8', errors='ignore').decode('utf-8')
             st.error(f"❌ AI修正処理失敗: {display_error}")
 
-        # --- ここから保存ボタンと要約機能を追加 ---
+        # --- 文字修正と整理 ---
         st.markdown("---")
-        st.info("編集内容を保存し、要約AIに送信できます。\n（ボタンを押すと下に要約が表示されます）")
-        if st.button("💾 編集内容を保存して要約する", key=f"save_and_summarize_{index}"):
-            st.write("[LOG] 保存ボタンが押されました。編集内容を取得します…")
-            # 編集内容の取得
+        st.subheader("📝 文字修正・整理")
+
+        # 編集内容を収集する関数
+        def get_edited_data():
             edited_data = {}
             # Document AI
             if ocr_result.get("source", "") == "document_ai":
@@ -452,20 +524,109 @@ def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], 
                         ]:
                             if field_key in item:
                                 edited_data[field_label] = item[field_key]
-            st.write("[LOG] 編集内容:")
-            st.write(edited_data)
-            # OpenAI要約API呼び出し
-            st.write("[LOG] OpenAI要約APIを呼び出します…")
-            summary = summarize_with_openai(edited_data)
-            st.write("[LOG] 要約APIのレスポンス:")
-            st.write(summary)
-            st.session_state[f"summary_result_{index}"] = summary
-        # 要約結果の表示
-        summary_key = f"summary_result_{index}"
-        if summary_key in st.session_state:
-            st.markdown("---")
-            st.success("📝 AI要約結果:")
-            st.write(st.session_state[summary_key])
+            return edited_data
+
+        # 保存ボタン
+        if st.button("💾 編集内容を保存して文字修正する", key=f"save_and_correct_{index}"):
+            # 編集内容の取得
+            edited_data = get_edited_data()
+
+            # 処理中の表示
+            with st.spinner("🔄 テキストを修正・整理しています..."):
+                correction_organized_result = correct_and_organize_text(edited_data)
+                st.session_state[f"correction_result_{index}"] = correction_organized_result
+
+        # 結果の表示
+        correction_key = f"correction_result_{index}"
+        if correction_key in st.session_state:
+            result = st.session_state[correction_key]
+
+            if result.get("success"):
+                # 成功時の表示
+                st.success("✅ 文字修正が完了しました")
+
+                # 修正結果の表示（ハイライト付き）
+                st.markdown("### 🔍 修正結果")
+
+                corrected_data = result.get("corrected_data", {})
+                original_data = result.get("original_data", {})
+
+                # カテゴリごとに修正結果を表示
+                for category in [
+                    "あなたが考える現状の課題",
+                    "個人としてできること",
+                    "地域としてできること",
+                    "行政の役割",
+                    "その他"
+                ]:
+                    if category in original_data and original_data[category]:
+                        # 修正後のテキストを取得
+                        if isinstance(corrected_data, dict) and "categories" in corrected_data:
+                            corrected_text = corrected_data.get("categories", {}).get(category, original_data[category])
+                        else:
+                            corrected_text = original_data[category]
+
+                        # 変更がある場合のみ表示
+                        if corrected_text != original_data[category]:
+                            display_field_comparison(category, original_data[category], corrected_text)
+                        else:
+                            st.markdown(f"**{category}:** {corrected_text}")
+
+                # 整理されたデータの表示
+                organized_data = result.get("organized_data", [])
+                if organized_data:
+                    st.markdown("### 📊 課題ベースでの整理結果")
+
+                    for i, problem_data in enumerate(organized_data):
+                        with st.expander(f"課題 {i + 1}: {problem_data.get('problem', '不明な課題')}", expanded=True):
+                            col1, col2 = st.columns(2)
+
+                            with col1:
+                                st.markdown("**個人としてできること:**")
+                                personal = problem_data.get('personal', [])
+                                if isinstance(personal, list):
+                                    for item in personal:
+                                        st.markdown(f"- {item}")
+                                elif personal:
+                                    st.markdown(f"- {personal}")
+                                else:
+                                    st.markdown("- なし")
+
+                                st.markdown("**地域としてできること:**")
+                                community = problem_data.get('community', [])
+                                if isinstance(community, list):
+                                    for item in community:
+                                        st.markdown(f"- {item}")
+                                elif community:
+                                    st.markdown(f"- {community}")
+                                else:
+                                    st.markdown("- なし")
+
+                            with col2:
+                                st.markdown("**行政の役割:**")
+                                gov = problem_data.get('gov', [])
+                                if isinstance(gov, list):
+                                    for item in gov:
+                                        st.markdown(f"- {item}")
+                                elif gov:
+                                    st.markdown(f"- {gov}")
+                                else:
+                                    st.markdown("- なし")
+
+                                st.markdown("**その他:**")
+                                others = problem_data.get('others', [])
+                                if isinstance(others, list):
+                                    for item in others:
+                                        st.markdown(f"- {item}")
+                                elif others:
+                                    st.markdown(f"- {others}")
+                                else:
+                                    st.markdown("- なし")
+
+            else:
+                # エラー時の表示
+                st.error(f"❌ 修正・整理処理でエラーが発生しました: {result.get('error', '不明なエラー')}")
+                st.info("編集内容はそのまま保持されています。")
 
 
 def display_organization_results(organized_data: List[Dict[str, Any]]):
@@ -646,7 +807,7 @@ def main():
     )
     st.markdown('</div>', unsafe_allow_html=True)
 
-    if processing_mode == "📑 複数セクション処理 (Phase 2)":
+    if processing_mode == "�� 複数セクション処理 (Phase 2)":
         # Phase 2: 複数セクション処理モード
         display_multi_section_mode()
     else:
@@ -937,17 +1098,18 @@ def summarize_with_openai(edited_data: dict) -> str:
     """
     編集内容をOpenAIの要約プロンプトに投げて要約を取得する関数。
     """
-    import openai
+    from openai import OpenAI
     import os
     import json
-    # ログ
-    st.write("[LOG] summarize_with_openai() 呼び出し")
+
     # APIキー取得
     openai_api_key = os.environ.get("OPENAI_API_KEY")
     if not openai_api_key:
         st.error("OpenAI APIキーが設定されていません。環境変数 OPENAI_API_KEY を設定してください。")
         return "APIキー未設定"
-    openai.api_key = openai_api_key
+
+    client = OpenAI(api_key=openai_api_key)
+
     # プロンプト作成
     prompt = """
 あなたは日本語の要約AIです。以下の各項目の内容を簡潔にまとめてください。
@@ -956,10 +1118,9 @@ def summarize_with_openai(edited_data: dict) -> str:
     for k, v in edited_data.items():
         prompt += f"【{k}】\n{v}\n"
     prompt += "\n全体を200文字以内で要約してください。"
-    st.write("[LOG] プロンプト:")
-    st.write(prompt)
+
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "あなたは日本語の要約AIです。"},
@@ -968,9 +1129,7 @@ def summarize_with_openai(edited_data: dict) -> str:
             max_tokens=256,
             temperature=0.3
         )
-        summary = response["choices"][0]["message"]["content"].strip()
-        st.write("[LOG] OpenAI APIレスポンス:")
-        st.write(summary)
+        summary = response.choices[0].message.content.strip()
         return summary
     except Exception as e:
         st.error(f"OpenAI API呼び出しでエラー: {e}")

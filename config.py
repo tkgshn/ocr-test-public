@@ -7,10 +7,10 @@ from dotenv import load_dotenv
 # 環境変数を読み込み
 load_dotenv()
 
-# OpenAI API設定
+# OpenAI API設定（文字修正と要約のみ使用）
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL_VISION = "gpt-4o"
 OPENAI_MODEL_TEXT = "gpt-4o"
+# Vision機能は廃止
 
 # Google Document AI設定
 GOOGLE_CLOUD_PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
@@ -26,8 +26,6 @@ ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
 ALLOWED_DOCUMENT_EXTENSIONS = ['.txt', '.pdf', '.docx', '.md']
 
 # OCR処理設定
-VISION_DETAIL = "high"
-TEMPERATURE_OCR = 0.2
 TEMPERATURE_CORRECTION = 0.3
 TEMPERATURE_ORGANIZATION = 0.7
 
@@ -35,64 +33,7 @@ TEMPERATURE_ORGANIZATION = 0.7
 MAX_PARALLEL_REQUESTS = 5
 
 # プロンプトテンプレート
-OCR_SYSTEM_PROMPT = """```xml
-<instructions>
-あなたは手書き文字を読み取るアシスタントです。Vision機能を使って、与えられた画像から手書きで書かれた文字を正確に読み取ってください。
-
-この画像は住民会議で回収された改善提案シートであり、以下の印刷されたラベルが含まれています：
-- 「あなたが考える現状の課題」
-- 「この課題を解決する方法」または「その課題を解決する方法」
-- 「（住民の役割）」
-- 「・個人としてできること」
-- 「・地域としてできること」
-- 「（行政の役割）」
-- 「（その他）」
-
-### 重要な指示：
-1. 上記の印刷されたラベルは読み取らないでください。
-2. 各ラベルの下または横に手書きで記入された内容のみを読み取ってください。
-3. 市民が手書きで記入した文字のみを対象とし、事前に印刷されたフォーマットや説明文は無視してください。
-
-### タスクの手順：
-1. 画像内の手書き文字を認識し、テキストとして抽出してください。
-2. 認識したテキストを以下のJSONフォーマットで出力してください：
-   ```json
-   [
-     {
-       "problem": "<「あなたが考える現状の課題」に対する手書きの回答>",
-       "personal": "<「個人としてできること」に対する手書きの回答>",
-       "community": "<「地域としてできること」に対する手書きの回答>",
-       "gov": "<「行政の役割」に対する手書きの回答>",
-       "others": "<「その他」に対する手書きの回答>"
-     }
-   ]
-   ```
-3. 出力にはXMLタグを含めないでください。
-4. 可能な限り正確に手書き文字を読み取り、誤認識を最小限に抑えてください。
-5. 印刷されたラベル自体は絶対に含めないでください。
-
-</instructions>
-
-<examples>
-<example>
-<input>
-画像には印刷された「あなたが考える現状の課題」というラベルがあり、その下に手書きで「交通機関が不便」と書かれている。
-「個人としてできること」の横に手書きで「近くの人と乗り合いをする」と記載されている。
-</input>
-<output>
-[
-  {
-    "problem": "交通機関が不便",
-    "personal": "近くの人と乗り合いをする",
-    "community": "",
-    "gov": "",
-    "others": ""
-  }
-]
-</output>
-</example>
-</examples>
-```"""
+# OpenAI Vision機能は廃止されたため、OCRプロンプトは不要
 
 CORRECTION_SYSTEM_PROMPT = """```xml
 <instructions>

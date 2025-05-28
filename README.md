@@ -1,12 +1,12 @@
 # 改善提案シート OCR システム
 
-Google Document AI と OpenAI GPT-4 Vision を使用した改善提案シートの文字起こしシステムです。
+Google Document AI を使用した改善提案シートの文字起こしシステムです。
 
 ## 機能
 
 ### Phase 1: 単一セクション OCR 検証 ✅
 
-- **基本的な OCR 機能**: Google Document AI（優先）と OpenAI GPT-4 Vision（フォールバック）
+- **基本的な OCR 機能**: Google Document AI による高精度な文字認識
 - **座標データ付きハイライト表示**: OCR 結果の視覚的確認
 - **WebUI でのテキスト修正**: インタラクティブな修正インターフェース
 - **ファイル形式対応**: 画像（JPG, PNG）・PDF
@@ -47,7 +47,7 @@ pip install -r requirements.txt
 `.env`ファイルを作成し、以下の設定を行ってください：
 
 ```bash
-# OpenAI API設定
+# OpenAI API設定（文字修正と要約機能のみ使用）
 OPENAI_API_KEY=your_openai_api_key_here
 
 # Google Document AI設定
@@ -119,7 +119,7 @@ streamlit run app.py
 ### 基本的な使用方法
 
 1. **ファイルアップロード**: 改善提案シートの画像または PDF をアップロード
-2. **OCR 処理**: 自動的に Google Document AI または OpenAI GPT-4 Vision で処理
+2. **OCR 処理**: Google Document AI で自動的に処理
 3. **結果確認**: ハイライト表示で座標情報を確認
 4. **テキスト修正**: 必要に応じて WebUI でテキストを修正
 5. **データ出力**: JSON、Markdown 形式でデータをエクスポート
@@ -138,7 +138,7 @@ streamlit run app.py
 from ocr_processor import OCRProcessor
 
 # 初期化
-processor = OCRProcessor(use_document_ai=True)
+processor = OCRProcessor()
 
 # 単一画像処理
 result = processor.process_single_image(image_file)
@@ -187,12 +187,13 @@ result = processor.process_document(image_file)
 - サービスアカウントに適切な権限が付与されているか確認
 - プロジェクトで課金が有効化されているか確認
 
-### OpenAI 関連
+### OpenAI 関連（文字修正・要約機能）
 
 **エラー: "OpenAI API key not found"**
 
 - `.env`ファイルに`OPENAI_API_KEY`が設定されているか確認
 - API キーが有効か確認
+- 注意: OpenAI APIはOCR処理ではなく、文字修正と要約機能のみに使用されます
 
 ## 開発情報
 
@@ -217,7 +218,8 @@ OCR_test/
 ### 技術スタック
 
 - **フロントエンド**: Streamlit
-- **OCR**: Google Document AI, OpenAI GPT-4 Vision
+- **OCR**: Google Document AI
+- **文字修正・要約**: OpenAI GPT-4
 - **画像処理**: OpenCV, PIL
 - **データ処理**: Pandas, NumPy
 - **認証**: Google Auth

@@ -205,47 +205,8 @@ class OCRVisualizer:
         outline_color = self._hex_to_rgba(color, alpha=200)
         draw.polygon(vertices, outline=outline_color, width=2)
 
-        # テキストラベル（オプション）
-        if text and len(text) > 0:
-            # バウンディングボックスの中心を計算
-            min_x = min(v[0] for v in vertices)
-            max_x = max(v[0] for v in vertices)
-            min_y = min(v[1] for v in vertices)
-            max_y = max(v[1] for v in vertices)
-
-            center_x = (min_x + max_x) // 2
-            center_y = (min_y + max_y) // 2
-
-            # 短いテキストのみ表示
-            display_text = text[:20] + "..." if len(text) > 20 else text
-
-            # テキストの背景
-            try:
-                # フォントサイズを動的に調整
-                font_size = max(10, min(16, (max_x - min_x) // 10))
-                font = ImageFont.load_default()
-
-                # テキストサイズを取得
-                bbox = draw.textbbox((0, 0), display_text, font=font)
-                text_width = bbox[2] - bbox[0]
-                text_height = bbox[3] - bbox[1]
-
-                # テキスト背景を描画
-                bg_x1 = center_x - text_width // 2 - 2
-                bg_y1 = center_y - text_height // 2 - 2
-                bg_x2 = center_x + text_width // 2 + 2
-                bg_y2 = center_y + text_height // 2 + 2
-
-                draw.rectangle([bg_x1, bg_y1, bg_x2, bg_y2],
-                             fill=(255, 255, 255, 180))
-
-                # テキストを描画
-                draw.text((center_x - text_width // 2, center_y - text_height // 2),
-                         display_text, fill=(0, 0, 0, 255), font=font)
-
-            except Exception:
-                # フォント関連のエラーが発生した場合はテキストをスキップ
-                pass
+        # テキストラベルは豆腐フォント問題を避けるために削除
+        # 日本語フォントが正しく読み込めない环境でも動作するように
 
     def _draw_text_box(self,
                       draw: ImageDraw.Draw,
@@ -330,16 +291,16 @@ class OCRVisualizer:
             image_file, ocr_result, highlight_level
         )
 
-        if highlighted_image:
-            # 画像を表示
-            st.image(highlighted_image,
-                    caption=f"ハイライト表示 ({highlight_level})",
-                    use_column_width=True)
+        # if highlighted_image:
+        #     # 画像を表示
+        #     # st.image(highlighted_image,
+        #     #         caption=f"ハイライト表示 ({highlight_level})",
+        #     #         use_column_width=True)
 
-            # 詳細情報を表示
-            self._display_detailed_results(ocr_result, highlight_level)
-        else:
-            st.error("ハイライト画像の作成に失敗しました。")
+        #     # # 詳細情報を表示
+        #     # self._display_detailed_results(ocr_result, highlight_level)
+        # else:
+        #     st.error("ハイライト画像の作成に失敗しました。")
 
     def _display_detailed_results(self,
                                 ocr_result: Dict[str, Any],
