@@ -1,11 +1,12 @@
 """
-改善提案シート文字起こしツール
+改善提案シート文字起こしツール - Document AI風UI
 Streamlitアプリケーション
 """
 import streamlit as st
 import os
+import json
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import config
 from ocr_processor import OCRProcessor
 from text_corrector import TextCorrector
@@ -81,18 +82,186 @@ def read_reference_files(uploaded_files: List) -> List[str]:
     return texts
 
 
-def display_processing_status(step: str, current: int, total: int):
+def display_workflow_step(step_number: int, title: str, status: str = "pending"):
     """
-    処理状況を表示する
+    ワークフローステップを表示する
 
     Args:
-        step: 処理ステップ名
-        current: 現在の進行状況
-        total: 全体の数
+        step_number: ステップ番号
+        title: ステップタイトル
+        status: ステップ状態 ("pending", "processing", "completed", "error")
     """
-    progress = current / total if total > 0 else 0
-    st.progress(progress)
-    st.text(f"{step}: {current}/{total}")
+    status_icons = {
+        "pending": "⏳",
+        "processing": "🔄",
+        "completed": "✅",
+        "error": "❌"
+    }
+
+    status_colors = {
+        "pending": "#gray",
+        "processing": "#blue",
+        "completed": "#green",
+        "error": "#red"
+    }
+
+    icon = status_icons.get(status, "⏳")
+    color = status_colors.get(status, "#gray")
+
+    st.markdown(f"""
+    <div style="
+        border: 2px solid {color};
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px 0;
+        background-color: {'#f0f8f0' if status == 'completed' else '#f8f8f8'};
+    ">
+        <h4>{icon} ステップ {step_number}: {title}</h4>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def display_image_ocr_result(image_file, ocr_result: Dict[str, Any], index: int):
+    """
+    画像とOCR結果を対応させて表示する
+
+    Args:
+        image_file: 画像ファイル
+        ocr_result: OCR結果
+        index: インデックス
+    """
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        st.subheader(f"📷 画像 {index + 1}: {image_file.name}")
+        st.image(image_file, use_column_width=True)
+
+    with col2:
+        st.subheader(f"📝 OCR結果 {index + 1}")
+
+        if ocr_result.get("success", False):
+            st.success("✅ OCR処理成功")
+
+            # OCRデータの表示
+            if "data" in ocr_result and ocr_result["data"]:
+                try:
+                    # JSONデータをパースして表示
+                    if isinstance(ocr_result["data"], str):
+                        data = json.loads(ocr_result["data"])
+                    else:
+                        data = ocr_result["data"]
+
+                    if isinstance(data, list) and len(data) > 0:
+                        item = data[0]
+                        st.markdown("**認識された内容:**")
+                        st.markdown(f"**課題:** {item.get('problem', 'なし')}")
+                        st.markdown(f"**個人:** {item.get('personal', 'なし')}")
+                        st.markdown(f"**地域:** {item.get('community', 'なし')}")
+                        st.markdown(f"**行政:** {item.get('gov', 'なし')}")
+                        st.markdown(f"**その他:** {item.get('others', 'なし')}")
+                    else:
+                        st.json(data)
+
+                except (json.JSONDecodeError, KeyError) as e:
+                    st.warning(f"データ表示エラー: {str(e)}")
+                    st.text(ocr_result.get("raw_text", "テキストなし"))
+            else:
+                st.text(ocr_result.get("raw_text", "テキストなし"))
+        else:
+            st.error("❌ OCR処理失敗")
+            st.error(ocr_result.get("error", "不明なエラー"))
+
+
+def display_correction_results(corrected_results: List[Dict[str, Any]]):
+    """
+    修正結果を表示する
+
+    Args:
+        corrected_results: 修正結果のリスト
+    """
+    st.subheader("🔧 文字認識修正結果")
+
+    successful_corrections = [r for r in corrected_results if r.get("success", False)]
+
+    if successful_corrections:
+        st.success(f"✅ 修正完了: {len(successful_corrections)} 件のデータを取得")
+
+        for i, result in enumerate(successful_corrections):
+            with st.expander(f"修正結果 {i + 1}"):
+                if "data" in result:
+                    try:
+                        if isinstance(result["data"], str):
+                            data = json.loads(result["data"])
+                        else:
+                            data = result["data"]
+                        st.json(data)
+                    except json.JSONDecodeError:
+                        st.text(result.get("corrected_text", "修正テキストなし"))
+                else:
+                    st.text(result.get("corrected_text", "修正テキストなし"))
+    else:
+        st.error("❌ 修正処理に成功したデータがありません")
+
+
+def display_organization_results(organized_data: List[Dict[str, Any]]):
+    """
+    整理結果を表示する
+
+    Args:
+        organized_data: 整理されたデータ
+    """
+    st.subheader("📊 課題ドリブン整理結果")
+
+    if organized_data:
+        st.success(f"✅ 整理完了: {len(organized_data)} 件の課題を識別")
+
+        for i, problem in enumerate(organized_data):
+            with st.expander(f"課題 {i + 1}: {problem.get('problem', '不明な課題')}"):
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.markdown("**個人としてできること:**")
+                    personal = problem.get('personal', [])
+                    if isinstance(personal, list):
+                        for item in personal:
+                            st.markdown(f"- {item}")
+                    elif personal:
+                        st.markdown(f"- {personal}")
+                    else:
+                        st.markdown("- なし")
+
+                    st.markdown("**地域としてできること:**")
+                    community = problem.get('community', [])
+                    if isinstance(community, list):
+                        for item in community:
+                            st.markdown(f"- {item}")
+                    elif community:
+                        st.markdown(f"- {community}")
+                    else:
+                        st.markdown("- なし")
+
+                with col2:
+                    st.markdown("**行政の役割:**")
+                    gov = problem.get('gov', [])
+                    if isinstance(gov, list):
+                        for item in gov:
+                            st.markdown(f"- {item}")
+                    elif gov:
+                        st.markdown(f"- {gov}")
+                    else:
+                        st.markdown("- なし")
+
+                    st.markdown("**その他:**")
+                    others = problem.get('others', [])
+                    if isinstance(others, list):
+                        for item in others:
+                            st.markdown(f"- {item}")
+                    elif others:
+                        st.markdown(f"- {others}")
+                    else:
+                        st.markdown("- なし")
+    else:
+        st.error("❌ 整理されたデータがありません")
 
 
 def main():
@@ -100,22 +269,79 @@ def main():
     メイン関数
     """
     st.set_page_config(
-        page_title="改善提案シート文字起こしツール",
+        page_title="改善提案シート文字起こしツール - Document AI",
         page_icon="🤖",
         layout="wide"
     )
 
-    st.title("🤖 改善提案シート文字起こしツール")
-    st.markdown("住民会議で回収された改善提案シートの手書き文字をOCRで読み取り、地域の課題ごとに整理します。")
+    # カスタムCSS
+    st.markdown("""
+    <style>
+    .main-header {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .workflow-container {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # ヘッダー
+    st.markdown("""
+    <div class="main-header">
+        <h1>🤖 改善提案シート文字起こしツール</h1>
+        <p>Document AI風ワークフロー - 段階的処理確認</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     # APIキーの確認
     if not check_api_key():
         st.error("OpenAI APIキーが設定されていません。.envファイルにOPENAI_API_KEYを設定してください。")
         st.stop()
 
-    # サイドバーでの設定
-    st.sidebar.header("設定")
-    use_ai_markdown = st.sidebar.checkbox("AIでMarkdown変換", value=True, help="AIを使用してMarkdown形式に変換します")
+    # セッション状態の初期化
+    if 'workflow_step' not in st.session_state:
+        st.session_state.workflow_step = 0
+    if 'ocr_results' not in st.session_state:
+        st.session_state.ocr_results = None
+    if 'corrected_results' not in st.session_state:
+        st.session_state.corrected_results = None
+    if 'organized_data' not in st.session_state:
+        st.session_state.organized_data = None
+    if 'final_markdown' not in st.session_state:
+        st.session_state.final_markdown = None
+
+    # ワークフロー表示
+    st.markdown('<div class="workflow-container">', unsafe_allow_html=True)
+    st.subheader("📋 処理ワークフロー")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        status1 = "completed" if st.session_state.workflow_step > 0 else "pending"
+        display_workflow_step(1, "OCR処理", status1)
+
+    with col2:
+        status2 = "completed" if st.session_state.workflow_step > 1 else "pending"
+        display_workflow_step(2, "文字修正", status2)
+
+    with col3:
+        status3 = "completed" if st.session_state.workflow_step > 2 else "pending"
+        display_workflow_step(3, "データ整理", status3)
+
+    with col4:
+        status4 = "completed" if st.session_state.workflow_step > 3 else "pending"
+        display_workflow_step(4, "レポート生成", status4)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # ファイルアップロード
     st.header("📁 ファイルアップロード")
@@ -169,135 +395,137 @@ def main():
         valid_materials = validate_uploaded_files(uploaded_materials, 'document')
         reference_texts.extend(read_reference_files(valid_materials))
 
-    # 処理実行ボタン
-    if st.button("🚀 処理開始", type="primary"):
+    # 処理ボタン群
+    st.header("🚀 処理実行")
 
-        # 処理開始
-        st.header("⚙️ 処理状況")
+    col1, col2, col3, col4, col5 = st.columns(5)
 
-        # 各処理クラスのインスタンス化
-        ocr_processor = OCRProcessor()
-        text_corrector = TextCorrector()
-        data_organizer = DataOrganizer()
-        markdown_formatter = MarkdownFormatter()
+    with col1:
+        if st.button("1️⃣ OCR処理開始", type="primary"):
+            st.session_state.workflow_step = 0
 
-        try:
-            # ステップ1: OCR処理
-            st.subheader("1. 画像文字認識処理")
+            # OCR処理
             with st.spinner("画像から手書き文字を認識中..."):
-                ocr_results = ocr_processor.process_multiple_images(valid_images)
+                ocr_processor = OCRProcessor()
+                st.session_state.ocr_results = ocr_processor.process_multiple_images(valid_images)
+                st.session_state.workflow_step = 1
 
-            # OCR結果の表示
-            successful_ocr = [r for r in ocr_results if r.get("success", False)]
-            st.success(f"OCR処理完了: {len(successful_ocr)}/{len(valid_images)} 枚成功")
+            st.rerun()
 
-            if not successful_ocr:
-                st.error("OCR処理に成功した画像がありません。")
-                st.stop()
-
-            # ステップ2: 文字認識修正
-            st.subheader("2. 文字認識修正処理")
+    with col2:
+        if st.button("2️⃣ 文字修正", disabled=st.session_state.workflow_step < 1):
+            # 文字修正処理
             with st.spinner("認識結果を修正中..."):
-                corrected_results = text_corrector.correct_multiple_results(ocr_results, reference_texts)
-                successful_corrections = text_corrector.extract_successful_corrections(corrected_results)
+                text_corrector = TextCorrector()
+                st.session_state.corrected_results = text_corrector.correct_multiple_results(
+                    st.session_state.ocr_results, reference_texts
+                )
+                st.session_state.workflow_step = 2
 
-            st.success(f"修正処理完了: {len(successful_corrections)} 件のデータを取得")
+            st.rerun()
 
-            if not successful_corrections:
-                st.error("修正処理に成功したデータがありません。")
-                st.stop()
-
-            # ステップ3: データ整理
-            st.subheader("3. 課題ドリブン整理処理")
+    with col3:
+        if st.button("3️⃣ データ整理", disabled=st.session_state.workflow_step < 2):
+            # データ整理処理
             with st.spinner("データを課題ごとに整理中..."):
+                data_organizer = DataOrganizer()
+                text_corrector = TextCorrector()
+                successful_corrections = text_corrector.extract_successful_corrections(st.session_state.corrected_results)
                 organization_result = data_organizer.organize_data(successful_corrections)
 
-            if not organization_result.get("success", False):
-                st.error(f"データ整理に失敗しました: {organization_result.get('error', '')}")
-                st.stop()
+                if organization_result.get("success", False):
+                    st.session_state.organized_data = organization_result["data"]
+                    st.session_state.workflow_step = 3
+                else:
+                    st.error(f"データ整理に失敗しました: {organization_result.get('error', '')}")
 
-            organized_data = organization_result["data"]
-            st.success(f"整理処理完了: {len(organized_data)} 件の課題を識別")
+            st.rerun()
 
-            # データ検証
-            validation_result = data_organizer.validate_organized_data(organized_data)
-            if not validation_result["is_valid"]:
-                st.warning("データ検証で問題が見つかりました:")
-                for issue in validation_result["issues"]:
-                    st.warning(f"- {issue}")
+    with col4:
+        if st.button("4️⃣ レポート生成", disabled=st.session_state.workflow_step < 3):
+            # Markdown変換処理
+            with st.spinner("最終レポートを生成中..."):
+                markdown_formatter = MarkdownFormatter()
+                markdown_result = markdown_formatter.format_to_markdown(st.session_state.organized_data, True)
 
-            # ステップ4: Markdown変換
-            st.subheader("4. Markdown形式変換")
-            with st.spinner("Markdown形式に変換中..."):
-                markdown_result = markdown_formatter.format_to_markdown(organized_data, use_ai_markdown)
+                if markdown_result.get("success", False):
+                    # メタデータの追加
+                    metadata = {
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "image_count": len(valid_images),
+                        "problem_count": len(st.session_state.organized_data)
+                    }
 
-            if not markdown_result.get("success", False):
-                st.error(f"Markdown変換に失敗しました: {markdown_result.get('error', '')}")
-                st.stop()
+                    st.session_state.final_markdown = markdown_formatter.add_metadata(
+                        markdown_result["markdown"], metadata
+                    )
+                    st.session_state.workflow_step = 4
+                else:
+                    st.error(f"レポート生成に失敗しました: {markdown_result.get('error', '')}")
 
-            # メタデータの追加
-            metadata = {
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "image_count": len(valid_images),
-                "problem_count": len(organized_data)
-            }
+            st.rerun()
 
-            final_markdown = markdown_formatter.add_metadata(
-                markdown_result["markdown"],
-                metadata
-            )
+    with col5:
+        if st.button("🔄 リセット"):
+            st.session_state.workflow_step = 0
+            st.session_state.ocr_results = None
+            st.session_state.corrected_results = None
+            st.session_state.organized_data = None
+            st.session_state.final_markdown = None
+            st.rerun()
 
-            st.success("Markdown変換完了")
+    # 結果表示
+    if st.session_state.workflow_step >= 1 and st.session_state.ocr_results:
+        st.header("📷 ステップ1: OCR処理結果")
 
-            # 結果表示
-            st.header("📊 処理結果")
+        successful_ocr = [r for r in st.session_state.ocr_results if r.get("success", False)]
+        st.info(f"OCR処理完了: {len(successful_ocr)}/{len(valid_images)} 枚成功")
 
-            # 統計情報
-            col1, col2, col3, col4 = st.columns(4)
-            with col1:
-                st.metric("処理画像数", len(valid_images))
-            with col2:
-                st.metric("識別課題数", len(organized_data))
-            with col3:
-                st.metric("成功率", f"{len(successful_ocr)/len(valid_images)*100:.1f}%")
-            with col4:
-                solutions_count = sum(1 for item in organized_data
-                                    if any(item.get(field) for field in ["personal", "community", "gov", "others"]))
-                st.metric("解決策有り", f"{solutions_count}/{len(organized_data)}")
+        # 各画像とOCR結果を表示
+        for i, (image_file, ocr_result) in enumerate(zip(valid_images, st.session_state.ocr_results)):
+            st.markdown("---")
+            display_image_ocr_result(image_file, ocr_result, i)
 
-            # Markdownプレビュー
-            st.subheader("📝 結果プレビュー")
-            st.markdown(final_markdown)
+    if st.session_state.workflow_step >= 2 and st.session_state.corrected_results:
+        st.header("🔧 ステップ2: 文字認識修正結果")
+        display_correction_results(st.session_state.corrected_results)
 
-            # ダウンロードボタン
-            st.subheader("💾 ダウンロード")
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"改善提案シート_整理結果_{timestamp}.md"
+    if st.session_state.workflow_step >= 3 and st.session_state.organized_data:
+        st.header("📊 ステップ3: 課題ドリブン整理結果")
+        display_organization_results(st.session_state.organized_data)
 
-            st.download_button(
-                label="📥 Markdownファイルをダウンロード",
-                data=final_markdown,
-                file_name=filename,
-                mime="text/markdown"
-            )
+    if st.session_state.workflow_step >= 4 and st.session_state.final_markdown:
+        st.header("📝 ステップ4: 最終レポート")
 
-            # デバッグ情報（展開可能）
-            with st.expander("🔍 詳細情報"):
-                st.subheader("OCR結果")
-                st.json(ocr_results)
+        # 統計情報
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("処理画像数", len(valid_images))
+        with col2:
+            st.metric("識別課題数", len(st.session_state.organized_data))
+        with col3:
+            successful_ocr = [r for r in st.session_state.ocr_results if r.get("success", False)]
+            st.metric("成功率", f"{len(successful_ocr)/len(valid_images)*100:.1f}%")
+        with col4:
+            solutions_count = sum(1 for item in st.session_state.organized_data
+                                if any(item.get(field) for field in ["personal", "community", "gov", "others"]))
+            st.metric("解決策有り", f"{solutions_count}/{len(st.session_state.organized_data)}")
 
-                st.subheader("修正結果")
-                st.json(corrected_results)
+        # Markdownプレビュー
+        st.subheader("📄 最終レポートプレビュー")
+        st.markdown(st.session_state.final_markdown)
 
-                st.subheader("整理結果")
-                st.json(organized_data)
+        # ダウンロードボタン
+        st.subheader("💾 ダウンロード")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"改善提案シート_整理結果_{timestamp}.md"
 
-                st.subheader("検証結果")
-                st.json(validation_result)
-
-        except Exception as e:
-            st.error(f"処理中にエラーが発生しました: {str(e)}")
-            st.exception(e)
+        st.download_button(
+            label="📥 Markdownファイルをダウンロード",
+            data=st.session_state.final_markdown,
+            file_name=filename,
+            mime="text/markdown"
+        )
 
 
 if __name__ == "__main__":
