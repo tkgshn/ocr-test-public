@@ -1,0 +1,546 @@
+app:
+  description: ''
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: 'テスト: 複数ファイル処理して改善提案シート文字起こし'
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/openai:0.0.11@390c87cc0f17370a70d3b214cd71a8de81fe9d6b52e6a38287acde034138b672
+kind: app
+version: 0.3.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: true
+        iteration_id: '1741492771202'
+        sourceType: iteration-start
+        targetType: llm
+      id: 1741492771202start-source-1741492775511-target
+      source: 1741492771202start
+      sourceHandle: source
+      target: '1741492775511'
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: true
+        iteration_id: '1741492771202'
+        sourceType: llm
+        targetType: llm
+      id: 1741492775511-source-1741492957572-target
+      source: '1741492775511'
+      sourceHandle: source
+      target: '1741492957572'
+      targetHandle: target
+      type: custom
+      zIndex: 1002
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: iteration
+      id: 1741491059309-source-1741492771202-target
+      source: '1741491059309'
+      sourceHandle: source
+      target: '1741492771202'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: iteration
+        targetType: code
+      id: 1741492771202-source-1741494424809-target
+      source: '1741492771202'
+      sourceHandle: source
+      target: '1741494424809'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 1741494424809-source-1741494953601-target
+      source: '1741494424809'
+      sourceHandle: source
+      target: '1741494953601'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: llm
+      id: 1741494953601-source-1741495957304-target
+      source: '1741494953601'
+      sourceHandle: source
+      target: '1741495957304'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 1741495957304-source-1741495735327-target
+      source: '1741495957304'
+      sourceHandle: source
+      target: '1741495735327'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: ''
+        selected: false
+        title: 開始
+        type: start
+        variables:
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - document
+          - image
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: 改善提案シート
+          max_length: 10
+          options: []
+          required: true
+          type: file-list
+          variable: kaizenteian_sheet
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - document
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: 議事録
+          max_length: 5
+          options: []
+          required: false
+          type: file-list
+          variable: gijiroku
+        - allowed_file_extensions: []
+          allowed_file_types:
+          - document
+          allowed_file_upload_methods:
+          - local_file
+          - remote_url
+          label: 投影資料
+          max_length: 5
+          options: []
+          required: false
+          type: file-list
+          variable: touei_siryou
+      height: 141
+      id: '1741491059309'
+      position:
+        x: 30
+        y: 262.5
+      positionAbsolute:
+        x: 30
+        y: 262.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        error_handle_mode: remove-abnormal-output
+        height: 177
+        is_parallel: true
+        iterator_selector:
+        - '1741491059309'
+        - kaizenteian_sheet
+        output_selector:
+        - '1741492957572'
+        - text
+        output_type: array[string]
+        parallel_nums: 10
+        selected: false
+        start_node_id: 1741492771202start
+        title: イテレーション
+        type: iteration
+        width: 692
+      height: 177
+      id: '1741492771202'
+      position:
+        x: 334
+        y: 226.5
+      positionAbsolute:
+        x: 334
+        y: 226.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 692
+      zIndex: 1
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: 1741492771202start
+      parentId: '1741492771202'
+      position:
+        x: 24
+        y: 68
+      positionAbsolute:
+        x: 358
+        y: 294.5
+      selectable: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1002
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        isInIteration: true
+        iteration_id: '1741492771202'
+        model:
+          completion_params:
+            frequency_penalty: 0.5
+            presence_penalty: 0.5
+            temperature: 0.2
+            top_p: 0.75
+          mode: chat
+          name: chatgpt-4o-latest
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: d4716fae-04f4-4819-9242-4c5e84227520
+          role: system
+          text: "```xml\n<instructions>\nあなたは手書き文字を読み取るアシスタントです。Vision機能を使って、与えられた画像から手書きで書かれた文字を正確に読み取ってください。\n\
+            \nこの画像は住民会議で回収された回答用紙であり、以下の情報が含まれています：\n- 「あなたが考える現状の課題」\n- 「その問題を解決する方法」として、以下のカテゴリに分かれています：\n\
+            \  - 個人としてできること\n  - 地域としてできること\n  - 行政の役割\n  - その他\n解決する方法は、複数個あるかもしれませんし、場合によってはたくさん書かれているかもしれません。それらはすべて読み取ってください。\n\
+            \n### タスクの手順：\n1. 画像内の手書き文字を認識し、テキストとして抽出してください。\n2. 市民が書いた文字のみを対象とし、事前に印刷されたフォーマットや説明文は無視してください。\n\
+            3. 認識したテキストを以下のJSONフォーマットで出力してください：\n   ```json\n   [\n     {\n      \
+            \ \"problem\": \"<地域の課題>\",\n       \"personal\": \"<個人としてできること>\",\n\
+            \       \"community\": \"<地域としてできること>\",\n       \"gov\": \"<行政の役割>\"\
+            ,\n       \"others\": \"<その他>\"\n     }\n   ]\n   ```\n4. 出力にはXMLタグを含めないでください。\n\
+            5. 可能な限り正確に手書き文字を読み取り、誤認識を最小限に抑えてください。\n\n</instructions>\n\n<examples>\n\
+            <example>\n<input>\n画像には「交通機関が不便」と書かれており、その下に「個人としてできること：近くの人と乗り合いをする」「地域としてできること：地域のバス運行を検討する」「行政の役割：公共交通の充実、乗合タクシーの検討」「その他：タクシー補助制度の導入」と記載されている。\n\
+            </input>\n<output>\n[\n  {\n    \"problem\": \"交通機関が不便\",\n    \"personal\"\
+            : \"近くの人と乗り合いをする\",\n    \"community\": \"地域のバス運行を検討する\",\n    \"gov\"\
+            : \"公共交通の充実\",\"乗合タクシーの検討\",\n    \"others\": \"タクシー補助制度の導入\"\n  }\n]\n\
+            </output>\n</example>\n\n<example>\n<input>\n画像には「防災意識が低い」と書かれており、その下に「個人としてできること：防災マップを確認する」「地域としてできること：防災訓練を実施する」「行政の役割：避難所の整備」「その他：防災アプリの導入」と記載されている。\n\
+            </input>\n<output>\n[\n  {\n    \"problem\": \"防災意識が低い\",\n    \"personal\"\
+            : \"防災マップを確認する\",\n    \"community\": \"防災訓練を実施する\",\n    \"gov\": \"\
+            避難所の整備\",\n    \"others\": \"防災アプリの導入\"\n  }\n]\n</output>\n</example>\n\
+            \n<example>\n<input>\n画像には「高齢化が進んでいる」と書かれており、その下に「個人としてできること：近所の高齢者を見守る」「地域としてできること：高齢者向けのイベントを開催する」「行政の役割：介護サービスの充実」「その他：ボランティア活動の促進」と記載されている。\n\
+            </input>\n<output>\n[\n  {\n    \"problem\": \"高齢化が進んでいる\",\n    \"personal\"\
+            : \"近所の高齢者を見守る\",\n    \"community\": \"高齢者向けのイベントを開催する\",\n    \"gov\"\
+            : \"介護サービスの充実\",\n    \"others\": \"ボランティア活動の促進\"\n  }\n]\n</output>\n\
+            </example>\n</examples>\n```"
+        - id: d958f9e6-d914-48bf-909c-5565b5f3b86e
+          role: user
+          text: ''
+        selected: false
+        title: 文字認識
+        type: llm
+        variables: []
+        vision:
+          configs:
+            detail: high
+            variable_selector:
+            - '1741492771202'
+            - item
+          enabled: true
+      height: 89
+      id: '1741492775511'
+      parentId: '1741492771202'
+      position:
+        x: 129.05435714302155
+        y: 68
+      positionAbsolute:
+        x: 463.05435714302155
+        y: 294.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+      zIndex: 1002
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        isInIteration: true
+        iteration_id: '1741492771202'
+        model:
+          completion_params: {}
+          mode: chat
+          name: chatgpt-4o-latest
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: 5855716b-14c1-412b-a212-e93710738834
+          role: system
+          text: '```xml
+
+            <instructions>
+
+            {{#1741492775511.text#}}のJSONデータの中に含まれる文字列の誤認識を修正してください。以下の手順に従って、適切な修正を行ってください。
+
+
+            1. JSONデータ内の文字列を解析し、文脈を考慮して誤認識された可能性のある文字を特定してください。
+
+            2. ありえない文字や意味が通らない単語が含まれている場合、前後の文脈を踏まえて適切な修正を行ってください。
+
+            3. 修正の際には{{#1741491059309.gijiroku#}}{{#1741491059309.touei_siryou#}}を参考にし、正しい表記を確認してください。
+
+            4. 可能な限り自然な文章になるように修正し、意味が通るようにしてください。
+
+            5. 出力にはXMLタグを含めず、修正後の文章のみを返してください。'
+        selected: false
+        title: 文字認識の修正
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '1741492957572'
+      parentId: '1741492771202'
+      position:
+        x: 431
+        y: 68
+      positionAbsolute:
+        x: 765
+        y: 294.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+      zIndex: 1002
+    - data:
+        code: "import json\n\ndef main(ocr_results: list) -> dict:\n    # 各エントリーをフォーマットして結合\n\
+          \    formatted_entries = [\n        f\"[image{i+1}{{\\n{json.dumps(json.loads(entry),\
+          \ indent=2, ensure_ascii=False)}\\n}}]\"\n        for i, entry in enumerate(ocr_results)\n\
+          \    ]\n    \n    return {\n        \"result\": \"\\n\\n\".join(formatted_entries)\
+          \  # 各エントリーの間に2つの改行を追加\n    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 全ての文字起こし結果を結合
+        type: code
+        variables:
+        - value_selector:
+          - '1741492771202'
+          - output
+          variable: ocr_results
+      height: 53
+      id: '1741494424809'
+      position:
+        x: 1086
+        y: 288.5
+      positionAbsolute:
+        x: 1086
+        y: 288.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params: {}
+          mode: chat
+          name: chatgpt-4o-latest
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: c46a7996-221b-4499-b03a-d2f4bdda4e01
+          role: system
+          text: "```xml\n<instruction>\nあなたのタスクは、提供されたデータを基に、地域の課題ごとに整理し、それぞれの立場（個人、地域、行政、その他）からの解決策や関わり方を明確にすることです。以下の手順に従ってください。\n\
+            \n1. **データの統合と整理**  \n   - {{#1741494424809.result#}}データには、各参加者の意見が含まれています。\
+            \  \n   - これらの意見を統合し、類似する内容をまとめ、課題ごとに整理してください。  \n   - 可能な限り元のデータの意味や表現を変えずに補足しながら整理してください。\n\
+            \n2. **課題ごとの分類**  \n   - 各課題について、以下のカテゴリに分類してください：\n     - `problem`:\
+            \ 地域の課題  \n     - `personal`: 個人としてできること  \n     - `community`: 地域としてできること\
+            \  \n     - `gov`: 行政の役割  \n     - `others`: その他（民間等）  \n\n3. **出力フォーマット**\
+            \  \n   - 出力はJSON形式で提供してください。  \n   - 各課題を辞書形式で整理し、リストとして出力してください。  \n\
+            \   - `gov` などの各カテゴリの内容は、短い文章のリストとして表現してください。  \n   - XMLタグは含めないでください。\n\
+            \n4. **例を参考にする**  \n   - 以下の例を参考に、適切にデータを整理してください。\n\n</instruction>\n\
+            \n<examples>\n<example>\n<input>\n地域の課題,個人としてできること,地域としてできること,行政の役割,その他（民間等）\n\
+            デジタル化,インスタグラム、フェイスブック,地域の公的なデジタル媒体(→運営),運営、情報,\n</input>\n<output>\n[\n\
+            \  {\n    \"problem\": \"デジタル化\",\n    \"personal\": [\"インスタグラム、フェイスブックを活用する\"\
+            ],\n    \"community\": [\"地域の公的なデジタル媒体を運営する\"],\n    \"gov\": [\"運営や情報提供を支援する\"\
+            ],\n    \"others\": []\n  }\n]\n</output>\n</example>\n\n<example>\n<input>\n\
+            地域の課題,個人としてできること,地域としてできること,行政の役割,その他（民間等）\n防災意識が低い,防災について考える、想定されることを考える、ハザードマップをみる,\"\
+            ・現状にみあった訓練の実施 ・若い人たちが来れるようなイベントの実施を検討\",行政として防災の現状をしっかり伝えてもらう,\n</input>\n\
+            <output>\n[\n  {\n    \"problem\": \"防災意識が低い\",\n    \"personal\": [\"\
+            防災について考える\", \"想定されることを考える\", \"ハザードマップをみる\"],\n    \"community\": [\"\
+            現状に見合った訓練を実施する\", \"若い人たちが参加しやすいイベントを検討する\"],\n    \"gov\": [\"行政として防災の現状をしっかり伝える\"\
+            ],\n    \"others\": []\n  }\n]\n</output>\n</example>\n\n<example>\n<input>\n\
+            地域の課題,個人としてできること,地域としてできること,行政の役割,その他（民間等）\n若い担い手不足(高齢者中心の組織),\"・若い者…なんでもいいから集まりに積極的に参加する\
+            \ ・高齢者…意識を変えて若者にも参加してもらえるコミュニティを\",\"・行事、話し会に若者を誘う ・外部のリーダーを引っ張ってくる\"\
+            ,\"デジタル環境の整備、手伝い 地域での雇用の創出\",\n</input>\n<output>\n[\n  {\n    \"problem\"\
+            : \"若い担い手不足(高齢者中心の組織)\",\n    \"personal\": [\"若い者は積極的に集まりに参加する\", \"\
+            高齢者は意識を変えて若者にも参加してもらえるコミュニティを作る\"],\n    \"community\": [\"行事や話し合いの場に若者を誘う\"\
+            , \"外部のリーダーを招く\"],\n    \"gov\": [\"デジタル環境の整備を行う\", \"地域での雇用を創出する\"],\n\
+            \    \"others\": []\n  }\n]\n</output>\n</example>\n</examples>\n```"
+        selected: false
+        title: 課題ドリブンに整理
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '1741494953601'
+      position:
+        x: 1390
+        y: 288.5
+      positionAbsolute:
+        x: 1390
+        y: 288.5
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1741495957304'
+          - text
+          variable: result
+        selected: false
+        title: 終了
+        type: end
+      height: 89
+      id: '1741495735327'
+      position:
+        x: 1998
+        y: 288.5
+      positionAbsolute:
+        x: 1998
+        y: 288.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: chatgpt-4o-latest
+          provider: langgenius/openai/openai
+        prompt_template:
+        - id: 38ffca62-0299-4f1f-b60e-fdfd90109c32
+          role: system
+          text: "```xml\n<instructions>\n以下の手順に従って、{{#1741494953601.text#}} をMarkdown形式に変換してください。\n\
+            \n1. 入力されたテキストを解析し、各課題を識別する。\n2. 各課題を `##` (h2) 見出しとしてMarkdownに変換する。\n\
+            3. 課題ごとに「個人としてできること」「地域としてできること」「行政の役割」「その他」の視点を `###` (h3) 見出しとして整理する。\n\
+            4. 各視点ごとの具体的な行動を箇条書き (`- `) でリスト化する。\n5. 出力にはXMLタグを含めず、純粋なMarkdown形式で整形する。\n\
+            \n以下のフォーマットに従って出力してください：\n\n```\n## 課題のタイトル\n\n### 個人としてできること\n- 具体的な行動\n\
+            \n### 地域としてできること\n- 具体的な行動\n\n### 行政の役割\n- 具体的な行動\n\n### その他\n- 具体的な行動\n\
+            ```\n\n</instructions>\n\n<examples>\n\n<example>\n<input>\n生活圏に学校・職場・買い物する場所が少ない\
+            \  \n個人としてできること:  \n- 住民同士の繋がりを強める  \n地域としてできること:  \n- 誘致する  \n行政の役割:\
+            \  \nその他:  \n</input>\n\n<output>\n## 生活圏に学校・職場・買い物する場所が少ない\n\n### 個人としてできること\n\
+            - 住民同士の繋がりを強める\n\n### 地域としてできること\n- 誘致する\n\n### 行政の役割\n\n### その他\n</output>\n\
+            </example>\n\n<example>\n<output>\n交通手段の維持  \n個人としてできること:  \n- 現在試験的に運転されているコミュニティバスを、積極的に利用し、将来に繋がるようにする。\n\
+            - 代替車の要望や検討。\n- 一度コミュニティバスを利用して率直な感想を書き出してみる。\n- 地域の現状をもっと知る。\n- 高校生や大学生の通学が不便なので、家族が送迎する。\n\
+            - 笠置、月ヶ瀬口といった、地域に近いJR関西線の活用が少ないため、利用する。\n- コミュニティバスを積極的に活用したり、改善に対する意見をだす。\n\
+            地域としてできること:  \n- コミュニティバスの路線を最大限に、住民のより良い利用のために細かい部分(停留所等)をまとめ、要望を行政に提出する。\n\
+            - 地域のいろいろな組織と話し合い、メリット、デメリットを出してみる\n- 交通手段がない方に対して、地域で当番制で送迎支援をする\n- 笠置、月ヶ瀬口に停まるコミュニティバスの本数を増やす。\n\
+            - コミュニティバスについて、住民が活用できる、活用しやすい運行方法へ改善していく\n- 個人の意見を集約する機会を多く持ち、行政に要望書を提出する\n\
+            行政の役割:  \n- 子どもや免許返納をしている高齢者など運転できない人の現状の把握をする。\n- コミュニティバスの運行状況を精査し、実のあるコミュニティバスを走らせる。\n\
+            - 福祉バスの運行の検討。仕組みの構築。\n- 福祉タクシーやシニアカーなど代替車の検討、整備を行う。\n- 予算の拡充の検討。\n- 緊急時の対応における交通アクセスの対策を考える。\n\
+            - 駅までの道の整備をして、バスの利用者を増やす\n貨客混載、JR関西線、バスを利用しやすくするため、JRやバス会社と話合いを行う。\nその他:\
+            \  \n</output>\n\n```"
+        selected: false
+        title: markdownに
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 89
+      id: '1741495957304'
+      position:
+        x: 1694
+        y: 288.5
+      positionAbsolute:
+        x: 1694
+        y: 288.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 12.892015682771785
+      y: 176.53866988966251
+      zoom: 0.6707158345188493
