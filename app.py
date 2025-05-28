@@ -9,12 +9,12 @@ import difflib
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 import config
-from ocr_processor import OCRProcessor
-from text_corrector import TextCorrector
-from data_organizer import DataOrganizer
-from markdown_formatter import MarkdownFormatter
-from ocr_visualizer import OCRVisualizer
-from multi_section_processor import MultiSectionProcessor
+from common.ocr_processor import OCRProcessor
+from phase1.text_corrector import TextCorrector
+from phase1.data_organizer import DataOrganizer
+from phase1.markdown_formatter import MarkdownFormatter
+from common.ocr_visualizer import OCRVisualizer
+from phase2.multi_section_processor import MultiSectionProcessor
 import time
 import hashlib
 from PIL import Image
@@ -578,7 +578,8 @@ def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], 
                     st.markdown("### 📊 課題ベースでの整理結果")
 
                     for i, problem_data in enumerate(organized_data):
-                        with st.expander(f"課題 {i + 1}: {problem_data.get('problem', '不明な課題')}", expanded=True):
+                        with st.container():
+                            st.markdown(f"#### 課題 {i + 1}: {problem_data.get('problem', '不明な課題')}")
                             col1, col2 = st.columns(2)
 
                             with col1:
@@ -588,7 +589,9 @@ def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], 
                                     for item in personal:
                                         st.markdown(f"- {item}")
                                 elif personal:
-                                    st.markdown(f"- {personal}")
+                                    for item in str(personal).split("\n"):
+                                        if item.strip():
+                                            st.markdown(f"- {item.strip()}")
                                 else:
                                     st.markdown("- なし")
 
@@ -598,7 +601,9 @@ def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], 
                                     for item in community:
                                         st.markdown(f"- {item}")
                                 elif community:
-                                    st.markdown(f"- {community}")
+                                    for item in str(community).split("\n"):
+                                        if item.strip():
+                                            st.markdown(f"- {item.strip()}")
                                 else:
                                     st.markdown("- なし")
 
@@ -609,7 +614,9 @@ def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], 
                                     for item in gov:
                                         st.markdown(f"- {item}")
                                 elif gov:
-                                    st.markdown(f"- {gov}")
+                                    for item in str(gov).split("\n"):
+                                        if item.strip():
+                                            st.markdown(f"- {item.strip()}")
                                 else:
                                     st.markdown("- なし")
 
@@ -619,7 +626,9 @@ def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], 
                                     for item in others:
                                         st.markdown(f"- {item}")
                                 elif others:
-                                    st.markdown(f"- {others}")
+                                    for item in str(others).split("\n"):
+                                        if item.strip():
+                                            st.markdown(f"- {item.strip()}")
                                 else:
                                     st.markdown("- なし")
 
@@ -652,7 +661,9 @@ def display_organization_results(organized_data: List[Dict[str, Any]]):
                         for item in personal:
                             st.markdown(f"- {item}")
                     elif personal:
-                        st.markdown(f"- {personal}")
+                        for item in str(personal).split("\n"):
+                            if item.strip():
+                                st.markdown(f"- {item.strip()}")
                     else:
                         st.markdown("- なし")
 
@@ -662,7 +673,9 @@ def display_organization_results(organized_data: List[Dict[str, Any]]):
                         for item in community:
                             st.markdown(f"- {item}")
                     elif community:
-                        st.markdown(f"- {community}")
+                        for item in str(community).split("\n"):
+                            if item.strip():
+                                st.markdown(f"- {item.strip()}")
                     else:
                         st.markdown("- なし")
 
@@ -673,7 +686,9 @@ def display_organization_results(organized_data: List[Dict[str, Any]]):
                         for item in gov:
                             st.markdown(f"- {item}")
                     elif gov:
-                        st.markdown(f"- {gov}")
+                        for item in str(gov).split("\n"):
+                            if item.strip():
+                                st.markdown(f"- {item.strip()}")
                     else:
                         st.markdown("- なし")
 
@@ -683,7 +698,9 @@ def display_organization_results(organized_data: List[Dict[str, Any]]):
                         for item in others:
                             st.markdown(f"- {item}")
                     elif others:
-                        st.markdown(f"- {others}")
+                        for item in str(others).split("\n"):
+                            if item.strip():
+                                st.markdown(f"- {item.strip()}")
                     else:
                         st.markdown("- なし")
     else:
@@ -787,27 +804,28 @@ def main():
     st.markdown("""
     <div class="main-header">
         <h1>🤖 改善提案シート文字起こしツール</h1>
-        <p>Document AI風ワークフロー - Phase 2: 複数セクション対応</p>
     </div>
     """, unsafe_allow_html=True)
+
+    # ここに処理モード選択をすぐ続けて配置
+    # st.markdown('<div class="mode-selector">', unsafe_allow_html=True)
+    st.subheader("🎯 処理モード選択")
+    processing_mode = st.radio(
+        "処理モードを選択してください:",
+        [
+            "🟢 通常モード（1枚画像=1提案）",
+            "🧪 ベータ: 複数セクション画像対応（1枚画像=複数提案）"
+        ],
+        help="🟢 通常モード: 1by1データ用。1枚の画像に1つの提案が書かれている場合はこちらを選択してください。\n🧪 ベータ: 1personデータ用。1枚の画像に複数の提案（セクション）が含まれている場合はこちらを選択してください。"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # APIキーの確認
     if not check_api_key():
         st.error("Google Document AI設定が正しく設定されていません。.envファイルにGOOGLE_CLOUD_PROJECT_IDとGOOGLE_CLOUD_PROCESSOR_IDを設定してください。")
         st.stop()
 
-    # 処理モード選択
-    st.markdown('<div class="mode-selector">', unsafe_allow_html=True)
-    st.subheader("🎯 処理モード選択")
-
-    processing_mode = st.radio(
-        "処理モードを選択してください:",
-        ["📄 単一セクション処理 (Phase 1)", "📑 複数セクション処理 (Phase 2)"],
-        help="Phase 1: 1by1データ用の単一セクション処理\nPhase 2: 1personデータ用の複数セクション処理"
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    if processing_mode == "�� 複数セクション処理 (Phase 2)":
+    if processing_mode == "🧪 ベータ: 複数セクション画像対応（1枚画像=複数提案）":
         # Phase 2: 複数セクション処理モード
         display_multi_section_mode()
     else:
@@ -817,16 +835,16 @@ def main():
 
 def display_multi_section_mode():
     """複数セクション処理モードの表示"""
-    st.header("📑 複数セクション処理モード (Phase 2)")
+    st.header("📑 1枚の画像に複数の提案が含まれた画像を受け付けます")
 
-    # セッション状態の初期化
+
     if 'multi_processor' not in st.session_state:
         st.session_state.multi_processor = MultiSectionProcessor()
     if 'multi_processing_complete' not in st.session_state:
         st.session_state.multi_processing_complete = False
 
     # ファイルアップロード
-    st.subheader("📁 複数セクション画像アップロード")
+    # st.subheader("📁 複数セクション画像アップロード")
     uploaded_image = st.file_uploader(
         "複数セクションが含まれた改善提案シート画像をアップロード",
         type=['jpg', 'jpeg', 'png', 'gif', 'webp'],
@@ -908,7 +926,27 @@ def display_multi_section_mode():
 
 def display_single_section_mode():
     """単一セクション処理モードの表示（既存の処理）"""
-    st.header("📄 単一セクション処理モード (Phase 1)")
+    st.header("📄 1画像1提案の画像をアップロードしてください")
+
+    # サンプル画像の表示
+    import os
+    sample_dir = os.path.join(os.path.dirname(__file__), "kaizen_teian_sheets", "1by1")
+    image_extensions = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg")
+    sample_images = [f for f in os.listdir(sample_dir) if f.lower().endswith(image_extensions)]
+
+    if sample_images:
+        st.markdown("#### 以下のような画像を添付してください")
+        # 1行あたりのカラム数
+        cols_per_row = 4
+        # 画像をグループ化して表示
+        for i in range(0, len(sample_images), cols_per_row):
+            cols = st.columns(cols_per_row)
+            for j, img_name in enumerate(sample_images[i:i+cols_per_row]):
+                img_path = os.path.join(sample_dir, img_name)
+                with cols[j]:
+                    st.image(img_path, caption=img_name, width=200)
+    else:
+        st.info("サンプル画像が見つかりませんでした。1by1ディレクトリに画像があるか確認してください。")
 
     # セッション状態の初期化
     if 'workflow_step' not in st.session_state:
@@ -922,26 +960,26 @@ def display_single_section_mode():
     if 'final_markdown' not in st.session_state:
         st.session_state.final_markdown = None
 
-    # ワークフロー表示
-    st.markdown('<div class="workflow-container">', unsafe_allow_html=True)
-    st.subheader("📋 処理ワークフロー")
+    # # ワークフロー表示
+    # st.markdown('<div class="workflow-container">', unsafe_allow_html=True)
+    # st.subheader("📋 処理ワークフロー")
 
-    col1, col2 = st.columns(2)
+    # col1, col2 = st.columns(2)
 
-    with col1:
-        status1 = "completed" if st.session_state.workflow_step > 0 else "pending"
-        display_workflow_step(1, "OCR処理 + 文字修正", status1)
+    # with col1:
+    #     status1 = "completed" if st.session_state.workflow_step > 0 else "pending"
+    #     display_workflow_step(1, "OCR処理 + 文字修正", status1)
 
-    with col2:
-        status2 = "completed" if st.session_state.workflow_step > 1 else "pending"
-        display_workflow_step(2, "データ整理 + レポート生成", status2)
+    # with col2:
+    #     status2 = "completed" if st.session_state.workflow_step > 1 else "pending"
+    #     display_workflow_step(2, "データ整理 + レポート生成", status2)
 
-    st.markdown('</div>', unsafe_allow_html=True)
+    # st.markdown('</div>', unsafe_allow_html=True)
 
     # ファイルアップロード（改善提案シートのみ）
-    st.subheader("📁 ファイルアップロード")
+    # st.subheader("📁 ファイルアップロード")
 
-    st.write("改善提案シート（必須）")
+    # st.write("改善提案シート（必須）")
     uploaded_images = st.file_uploader(
         "手書きの改善提案シート画像をアップロード",
         type=['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
@@ -958,8 +996,31 @@ def display_single_section_mode():
             st.stop()
 
         st.success(f"✅ {len(valid_images)} 枚の画像ファイルが準備完了")
+
+        # --- ここから自動実行ロジック追加 ---
+        # ファイル名リストでアップロード内容の変化を検知
+        uploaded_names = [f.name for f in valid_images]
+        prev_uploaded_names = st.session_state.get('prev_uploaded_names', None)
+        # すでに処理済みかどうか判定
+        already_processed = (
+            st.session_state.get('ocr_results') is not None and
+            st.session_state.get('corrected_results') is not None and
+            st.session_state.get('workflow_step', 0) >= 1 and
+            st.session_state.get('prev_uploaded_names') == uploaded_names
+        )
+        # ファイルが新しくアップロードされた場合のみ自動実行
+        if not already_processed:
+            st.session_state.workflow_step = 0
+            reference_texts = []  # 参考資料は使用しない
+            with st.spinner("自動でOCR処理と文字修正を実行中..."):
+                ocr_results, corrected_results = process_ocr_and_correction(valid_images, reference_texts)
+                st.session_state.ocr_results = ocr_results
+                st.session_state.corrected_results = corrected_results
+                st.session_state.workflow_step = 1
+                st.session_state.prev_uploaded_names = uploaded_names
+            st.rerun()
     else:
-        st.warning("改善提案シートの画像をアップロードしてください。")
+        st.warning("サンプル画像と同じフォーマットの改善提案シートの画像をアップロードしてください。")
         st.stop()
 
     # 処理ボタン群
