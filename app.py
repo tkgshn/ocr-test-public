@@ -23,8 +23,24 @@ import io
 
 # Streamlit Cloud環境ではst.secretsからenvをセット
 if hasattr(st, "secrets") and st.secrets:
-    for key, value in st.secrets.items():
-        os.environ[key] = str(value)
+    # 環境変数をセット
+    for key in ["GOOGLE_CLOUD_PROJECT_ID", "GOOGLE_CLOUD_LOCATION", 
+                "GOOGLE_CLOUD_PROCESSOR_ID", "GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT", 
+                "OPENAI_API_KEY"]:
+        if key in st.secrets:
+            os.environ[key] = str(st.secrets[key])
+    
+    # Google Service Account JSONを一時ファイルとして作成
+    if "google_service_account" in st.secrets:
+        import tempfile
+        service_account_info = dict(st.secrets["google_service_account"])
+        # 必要なフィールドを確実に含める
+        service_account_info["type"] = "service_account"
+        
+        # 一時ファイルに書き込み
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(service_account_info, f)
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = f.name
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
