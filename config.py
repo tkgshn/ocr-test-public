@@ -4,21 +4,43 @@
 import os
 from dotenv import load_dotenv
 
-# 環境変数を読み込み
-load_dotenv()
+# 環境変数を読み込み（.envファイルがある場合のみ）
+if os.path.exists('.env'):
+    load_dotenv()
 
-# OpenAI API設定（文字修正と要約のみ使用）
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Streamlit secretsを使用する場合の処理
+try:
+    import streamlit as st
+    # st.secretsが利用可能な場合
+    if hasattr(st, 'secrets'):
+        # OpenAI API設定（文字修正と要約のみ使用）
+        OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+        
+        # Google Document AI設定
+        GOOGLE_CLOUD_PROJECT_ID = st.secrets.get("GOOGLE_CLOUD_PROJECT_ID", os.getenv("GOOGLE_CLOUD_PROJECT_ID"))
+        GOOGLE_CLOUD_LOCATION = st.secrets.get("GOOGLE_CLOUD_LOCATION", os.getenv("GOOGLE_CLOUD_LOCATION", "us"))
+        GOOGLE_CLOUD_PROCESSOR_ID = st.secrets.get("GOOGLE_CLOUD_PROCESSOR_ID", os.getenv("GOOGLE_CLOUD_PROCESSOR_ID"))
+        GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT = st.secrets.get("GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT", os.getenv("GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT", "us-documentai.googleapis.com"))
+    else:
+        # st.secretsが利用できない場合は環境変数から読み込み
+        OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+        GOOGLE_CLOUD_PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
+        GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us")
+        GOOGLE_CLOUD_PROCESSOR_ID = os.getenv("GOOGLE_CLOUD_PROCESSOR_ID")
+        GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT = os.getenv("GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT", "us-documentai.googleapis.com")
+except ImportError:
+    # Streamlitがインストールされていない場合は環境変数から読み込み
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    GOOGLE_CLOUD_PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
+    GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us")
+    GOOGLE_CLOUD_PROCESSOR_ID = os.getenv("GOOGLE_CLOUD_PROCESSOR_ID")
+    GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT = os.getenv("GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT", "us-documentai.googleapis.com")
+
 OPENAI_MODEL_TEXT = "gpt-4o"
 # Vision機能は廃止
-
-# Google Document AI設定
-GOOGLE_CLOUD_PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT_ID")
-GOOGLE_CLOUD_LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us")
-GOOGLE_CLOUD_PROCESSOR_ID = os.getenv("GOOGLE_CLOUD_PROCESSOR_ID")
-GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-# エンドポイントはホスト名のみ（httpsプロトコルは含めない）
-GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT = os.getenv("GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT", "us-documentai.googleapis.com")
 
 # ファイルアップロード設定
 MAX_FILE_SIZE_MB = 10
