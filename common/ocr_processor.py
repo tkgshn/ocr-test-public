@@ -13,15 +13,14 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+from google.oauth2 import service_account
+import streamlit as st
 
 # Google Document AI imports
 try:
     from google.api_core.client_options import ClientOptions
     from google.cloud import documentai
-    from google.oauth2 import service_account
-    DOCUMENTAI_AVAILABLE = True
 except ImportError:
-    DOCUMENTAI_AVAILABLE = False
     print("Error: Google Document AI not available. Install with: pip install google-cloud-documentai google-auth")
     raise ImportError("Google Document AI is required for this application")
 
@@ -63,11 +62,10 @@ class OCRProcessor:
 
             # 認証設定
             credentials = None
-            
+
             # Streamlit secretsからサービスアカウント情報を取得
             try:
-                import streamlit as st
-                if hasattr(st, 'secrets') and 'google_service_account' in st.secrets:
+                if "google_service_account" in st.secrets:
                     # st.secretsからサービスアカウント情報を作成
                     service_account_info = dict(st.secrets["google_service_account"])
                     credentials = service_account.Credentials.from_service_account_info(
@@ -76,17 +74,7 @@ class OCRProcessor:
                     print("Using credentials from Streamlit secrets")
             except Exception as e:
                 print(f"Could not load credentials from st.secrets: {e}")
-            
-            # 環境変数のファイルパスから読み込み
-            if not credentials and config.GOOGLE_APPLICATION_CREDENTIALS:
-                if os.path.exists(config.GOOGLE_APPLICATION_CREDENTIALS):
-                    credentials = service_account.Credentials.from_service_account_file(
-                        config.GOOGLE_APPLICATION_CREDENTIALS
-                    )
-                    print(f"Using credentials from file: {config.GOOGLE_APPLICATION_CREDENTIALS}")
-                else:
-                    print(f"Warning: Service account file not found: {config.GOOGLE_APPLICATION_CREDENTIALS}")
-            
+
             if not credentials:
                 print("Warning: No credentials found. Attempting to use Application Default Credentials.")
 
