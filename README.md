@@ -1,203 +1,234 @@
-# 改善提案シート文字起こしツール
+# 改善提案シート OCR システム
 
-住民会議で回収された改善提案シートの手書き文字を OCR で読み取り、地域の課題ごとに整理して Markdown 形式で出力するローカルツールです。
+Google Document AI と OpenAI GPT-4 Vision を使用した改善提案シートの文字起こしシステムです。
 
 ## 機能
 
-- 📸 **画像 OCR 処理**: OpenAI GPT-4 Vision を使用した手書き文字認識
-- 🔧 **文字認識修正**: 誤認識の自動修正
-- 📊 **課題分類**: 地域課題ごとの自動整理
-- 📝 **Markdown 出力**: 見やすい形式での結果出力
-- 🌐 **Web インターフェース**: Streamlit による直感的な操作
+### Phase 1: 単一セクション OCR 検証 ✅
 
-## 必要な環境
+- **基本的な OCR 機能**: Google Document AI（優先）と OpenAI GPT-4 Vision（フォールバック）
+- **座標データ付きハイライト表示**: OCR 結果の視覚的確認
+- **WebUI でのテキスト修正**: インタラクティブな修正インターフェース
+- **ファイル形式対応**: 画像（JPG, PNG）・PDF
 
-- Python 3.8 以上
-- OpenAI API キー
+### Phase 2: 複数セクション処理 🚧
 
-## インストール
+- **セクション自動分割・構造化**: 改善提案シートの複数セクションを自動検出
+- **複数セクション対応**: 各セクションの個別処理と統合
+- **セクション間関係性分析**: セクション間の関連性を分析
 
-1. **リポジトリのクローン**
+### Phase 3: 完全 PDF 処理システム 📋
 
-   ```bash
-   git clone <repository-url>
-   cd OCR_test
-   ```
+- **完全 PDF 処理**: 複数ページ PDF の一括処理
+- **バッチ処理機能**: 大量ファイルの効率的処理
+- **高度な分析機能**: 統計分析とレポート生成
 
-2. **依存関係のインストール**
+## セットアップ
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 1. 環境準備
 
-3. **環境変数の設定**
+```bash
+# リポジトリをクローン
+git clone <repository-url>
+cd OCR_test
 
-   ```bash
-   # .envファイルを作成
-   cp env_example.txt .env
+# 仮想環境を作成・有効化
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+# または
+venv\Scripts\activate  # Windows
 
-   # .envファイルを編集してOpenAI APIキーを設定
-   OPENAI_API_KEY=your_actual_api_key_here
-   ```
+# 依存関係をインストール
+pip install -r requirements.txt
+```
+
+### 2. 環境変数の設定
+
+`.env`ファイルを作成し、以下の設定を行ってください：
+
+```bash
+# OpenAI API設定
+OPENAI_API_KEY=your_openai_api_key_here
+
+# Google Document AI設定
+GOOGLE_CLOUD_PROJECT_ID=your_google_cloud_project_id
+GOOGLE_CLOUD_LOCATION=us
+GOOGLE_CLOUD_PROCESSOR_ID=your_processor_id
+
+# Google Cloud認証設定（以下のいずれかを使用）
+# 方法1: サービスアカウントキーファイルのパス
+GOOGLE_APPLICATION_CREDENTIALS=path/to/your/service-account-key.json
+
+# 方法2: Application Default Credentials (ADC) を使用する場合
+# gcloud auth application-default login を実行してください
+# この場合、GOOGLE_APPLICATION_CREDENTIALSは不要です
+
+# Document AI API エンドポイント（地域に応じて設定）
+# us: us-documentai.googleapis.com
+# eu: eu-documentai.googleapis.com
+GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT=us-documentai.googleapis.com
+```
+
+### 3. Google Document AI の設定
+
+#### 3.1 Google Cloud プロジェクトの作成
+
+1. [Google Cloud Console](https://console.cloud.google.com/) にアクセス
+2. 新しいプロジェクトを作成または既存のプロジェクトを選択
+3. Document AI API を有効化
+4. 課金を有効化
+
+#### 3.2 Document AI プロセッサーの作成
+
+1. Google Cloud Console で「Document AI」を検索
+2. 「プロセッサー」→「プロセッサーを作成」
+3. 「Enterprise Document OCR」を選択
+4. プロセッサー名を入力し、地域を選択
+5. 作成されたプロセッサー ID をメモ
+
+#### 3.3 認証の設定
+
+**方法 1: サービスアカウントキー（推奨）**
+
+1. Google Cloud Console で「IAM と管理」→「サービスアカウント」
+2. 「サービスアカウントを作成」
+3. 以下の役割を付与：
+   - `Document AI API User`
+   - `Service Account Token Creator`
+4. 「キー」タブで「新しいキーを作成」→「JSON」
+5. ダウンロードした JSON ファイルのパスを`GOOGLE_APPLICATION_CREDENTIALS`に設定
+
+**方法 2: Application Default Credentials (ADC)**
+
+```bash
+# Google Cloud CLIをインストール後
+gcloud auth application-default login
+```
+
+### 4. アプリケーションの起動
+
+```bash
+# Streamlitアプリを起動
+streamlit run app.py
+```
+
+ブラウザで `http://localhost:8501` にアクセスしてください。
 
 ## 使用方法
 
-1. **アプリケーションの起動**
+### 基本的な使用方法
 
-   ```bash
-   streamlit run app.py
-   ```
+1. **ファイルアップロード**: 改善提案シートの画像または PDF をアップロード
+2. **OCR 処理**: 自動的に Google Document AI または OpenAI GPT-4 Vision で処理
+3. **結果確認**: ハイライト表示で座標情報を確認
+4. **テキスト修正**: 必要に応じて WebUI でテキストを修正
+5. **データ出力**: JSON、Markdown 形式でデータをエクスポート
 
-2. **ブラウザでアクセス**
+### 複数セクション処理（Phase 2）
 
-   - 自動的にブラウザが開きます（通常は http://localhost:8501）
+1. **セクション分割**: 改善提案シートを自動的にセクションに分割
+2. **個別処理**: 各セクション（課題、提案、対象など）を個別に処理
+3. **統合結果**: 全セクションの結果を統合して表示
 
-3. **ファイルのアップロード**
+## API 仕様
 
-   - **改善提案シート**: 手書きの画像ファイル（必須）
-   - **議事録**: 参考資料のテキストファイル（オプション）
-   - **投影資料**: 参考資料のテキストファイル（オプション）
-
-4. **処理の実行**
-
-   - 「🚀 処理開始」ボタンをクリック
-   - 処理状況がリアルタイムで表示されます
-
-5. **結果の確認とダウンロード**
-   - 処理結果が Markdown 形式で表示されます
-   - 「📥 Markdown ファイルをダウンロード」でファイル保存
-
-## 対応ファイル形式
-
-### 画像ファイル（改善提案シート）
-
-- JPG, JPEG, PNG, GIF, WEBP, SVG
-- 最大ファイルサイズ: 10MB
-
-### テキストファイル（参考資料）
-
-- TXT, MD
-- 最大ファイルサイズ: 10MB
-
-## 処理フロー
-
-```
-画像アップロード
-    ↓
-OCR処理（GPT-4 Vision）
-    ↓
-文字認識修正（GPT-4）
-    ↓
-課題ドリブン整理（GPT-4）
-    ↓
-Markdown形式変換
-    ↓
-結果出力・ダウンロード
-```
-
-## 出力形式
-
-処理結果は以下の構造で Markdown 形式で出力されます：
-
-```markdown
-## 課題のタイトル
-
-### 個人としてできること
-
-- 具体的な行動 1
-- 具体的な行動 2
-
-### 地域としてできること
-
-- 具体的な行動 1
-- 具体的な行動 2
-
-### 行政の役割
-
-- 具体的な行動 1
-- 具体的な行動 2
-
-### その他
-
-- 具体的な行動 1
-- 具体的な行動 2
-```
-
-## 設定
-
-### config.py での設定項目
-
-- **API モデル**: 使用する OpenAI モデルの指定
-- **温度パラメータ**: AI 応答の創造性レベル
-- **ファイルサイズ制限**: アップロード可能なファイルサイズ
-- **並列処理数**: 同時処理可能な画像数
-
-### 主な設定値
+### OCRProcessor
 
 ```python
-OPENAI_MODEL_VISION = "gpt-4o"      # Vision用モデル
-OPENAI_MODEL_TEXT = "gpt-4o"        # テキスト処理用モデル
-MAX_FILE_SIZE_MB = 10               # 最大ファイルサイズ
-TEMPERATURE_OCR = 0.2               # OCR処理の温度
-TEMPERATURE_CORRECTION = 0.3        # 修正処理の温度
-TEMPERATURE_ORGANIZATION = 0.7      # 整理処理の温度
+from ocr_processor import OCRProcessor
+
+# 初期化
+processor = OCRProcessor(use_document_ai=True)
+
+# 単一画像処理
+result = processor.process_single_image(image_file)
+
+# 複数画像処理
+results = processor.process_multiple_images(image_files)
+```
+
+### SectionAnalyzer
+
+```python
+from section_analyzer import SectionAnalyzer
+
+# セクション分析
+analyzer = SectionAnalyzer()
+sections = analyzer.analyze_sections(image)
+```
+
+### MultiSectionProcessor
+
+```python
+from multi_section_processor import MultiSectionProcessor
+
+# 複数セクション処理
+processor = MultiSectionProcessor()
+result = processor.process_document(image_file)
 ```
 
 ## トラブルシューティング
 
-### よくある問題
+### Google Document AI 関連
 
-1. **API キーエラー**
+**エラー: "Failed to setup Document AI"**
 
-   - `.env`ファイルに OpenAI API キーが正しく設定されているか確認
-   - API キーに十分なクレジットがあるか確認
+- Google Cloud プロジェクト ID が正しく設定されているか確認
+- Document AI API が有効化されているか確認
+- 認証情報が正しく設定されているか確認
 
-2. **画像認識エラー**
+**エラー: "Service account file not found"**
 
-   - 画像が鮮明で読み取り可能か確認
-   - ファイルサイズが制限内か確認
-   - 対応形式の画像ファイルか確認
+- `GOOGLE_APPLICATION_CREDENTIALS`のパスが正しいか確認
+- サービスアカウントキーファイルが存在するか確認
 
-3. **処理が遅い**
-   - OpenAI API のレート制限により処理が遅くなる場合があります
-   - 画像数を減らして試してください
+**エラー: "Permission denied"**
 
-### ログの確認
+- サービスアカウントに適切な権限が付与されているか確認
+- プロジェクトで課金が有効化されているか確認
 
-詳細な処理状況は「🔍 詳細情報」セクションで確認できます：
+### OpenAI 関連
 
-- OCR 結果の生データ
-- 修正処理の結果
-- データ整理の結果
-- 検証結果
+**エラー: "OpenAI API key not found"**
 
-## 開発者向け情報
+- `.env`ファイルに`OPENAI_API_KEY`が設定されているか確認
+- API キーが有効か確認
 
-### ファイル構成
+## 開発情報
+
+### プロジェクト構造
 
 ```
 OCR_test/
-├── app.py                  # Streamlitメインアプリ
-├── config.py              # 設定ファイル
-├── ocr_processor.py       # OCR処理クラス
-├── text_corrector.py      # 文字修正クラス
-├── data_organizer.py      # データ整理クラス
-├── markdown_formatter.py  # Markdown出力クラス
-├── requirements.txt       # 依存関係
-├── design_doc.md         # 設計ドキュメント
-└── README.md             # このファイル
+├── app.py                      # メインアプリケーション
+├── config.py                   # 設定ファイル
+├── ocr_processor.py           # OCR処理クラス
+├── ocr_visualizer.py          # OCR結果可視化
+├── section_analyzer.py        # セクション分析
+├── multi_section_processor.py # 複数セクション処理
+├── text_corrector.py          # テキスト修正
+├── data_organizer.py          # データ整理
+├── markdown_formatter.py      # Markdown変換
+├── requirements.txt           # 依存関係
+├── env_example.txt           # 環境変数例
+└── README.md                 # このファイル
 ```
 
-### クラス構成
+### 技術スタック
 
-- **OCRProcessor**: 画像からのテキスト抽出
-- **TextCorrector**: OCR 結果の誤認識修正
-- **DataOrganizer**: 課題ドリブンでのデータ整理
-- **MarkdownFormatter**: 最終結果の Markdown 変換
+- **フロントエンド**: Streamlit
+- **OCR**: Google Document AI, OpenAI GPT-4 Vision
+- **画像処理**: OpenCV, PIL
+- **データ処理**: Pandas, NumPy
+- **認証**: Google Auth
 
-### カスタマイズ
+### 貢献
 
-プロンプトテンプレートは`config.py`で定義されており、用途に応じて調整可能です。
+1. このリポジトリをフォーク
+2. 機能ブランチを作成 (`git checkout -b feature/amazing-feature`)
+3. 変更をコミット (`git commit -m 'Add amazing feature'`)
+4. ブランチにプッシュ (`git push origin feature/amazing-feature`)
+5. プルリクエストを作成
 
 ## ライセンス
 
@@ -205,4 +236,4 @@ OCR_test/
 
 ## サポート
 
-問題や質問がある場合は、GitHub の Issues ページでお知らせください。
+問題や質問がある場合は、GitHub の Issues ページで報告してください。

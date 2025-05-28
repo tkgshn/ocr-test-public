@@ -1,2 +1,20 @@
 # OpenAI API設定
 OPENAI_API_KEY=your_openai_api_key_here
+
+# Google Document AI設定
+GOOGLE_CLOUD_PROJECT_ID=your_google_cloud_project_id
+GOOGLE_CLOUD_LOCATION=us
+GOOGLE_CLOUD_PROCESSOR_ID=your_processor_id
+
+# Google Cloud認証設定（以下のいずれかを使用）
+# 方法1: サービスアカウントキーファイルのパス
+GOOGLE_APPLICATION_CREDENTIALS=path/to/your/service-account-key.json
+
+# 方法2: Application Default Credentials (ADC) を使用する場合
+# gcloud auth application-default login を実行してください
+# この場合、GOOGLE_APPLICATION_CREDENTIALSは不要です
+
+# Document AI API エンドポイント（地域に応じて設定）
+# us: us-documentai.googleapis.com
+# eu: eu-documentai.googleapis.com
+GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT=us-documentai.googleapis.com

@@ -13,16 +13,19 @@ from ocr_processor import OCRProcessor
 from text_corrector import TextCorrector
 from data_organizer import DataOrganizer
 from markdown_formatter import MarkdownFormatter
+from ocr_visualizer import OCRVisualizer
+from multi_section_processor import MultiSectionProcessor
+import time
 
 
 def check_api_key() -> bool:
     """
-    OpenAI APIキーの存在確認
+    Google Document AI設定の確認
 
     Returns:
-        bool: APIキーが設定されているかどうか
+        bool: Document AI設定が正しく設定されているかどうか
     """
-    return bool(config.OPENAI_API_KEY)
+    return bool(config.GOOGLE_CLOUD_PROJECT_ID and config.GOOGLE_CLOUD_PROCESSOR_ID)
 
 
 def validate_uploaded_files(uploaded_files: List, file_type: str) -> List:
@@ -172,121 +175,297 @@ def display_field_comparison(field_name: str, original_text: str, corrected_text
 
 def display_image_ocr_correction_result(image_file, ocr_result: Dict[str, Any], correction_result: Dict[str, Any], index: int):
     """
-    画像、OCR結果、修正結果を横並びで表示する
+    画像、OCR結果、修正結果を並べて表示
 
     Args:
         image_file: 画像ファイル
-        ocr_result: OCR結果
-        correction_result: 修正結果
-        index: インデックス
+        ocr_result: OCR処理結果
+        correction_result: 修正処理結果
+        index: インデックス（一意のキー生成用）
     """
-    col1, col2, col3 = st.columns([1, 1, 1])
+    # 印刷されたラベルのリスト
+    PRINTED_LABELS = [
+        "あなたが考える現状の課題",
+        "この課題を解決する方法",
+        "その課題を解決する方法",
+        "（住民の役割）",
+        "住民の役割",
+        "・個人としてできること",
+        "個人としてできること",
+        "・地域としてできること",
+        "地域としてできること",
+        "（行政の役割）",
+        "行政の役割",
+        "（その他）",
+        "その他"
+    ]
+
+    # ラベルとカテゴリのマッピング
+    LABEL_MAPPING = {
+        "あなたが考える現状の課題": "あなたが考える現状の課題",
+        "個人としてできること": "個人としてできること",
+        "地域としてできること": "地域としてできること",
+        "行政の役割": "行政の役割",
+        "その他": "その他"
+    }
+
+    col1, col2 = st.columns([1, 1])
 
     with col1:
-        st.subheader(f"📷 画像 {index + 1}")
-        st.text(f"ファイル名: {image_file.name}")
-        st.image(image_file, use_column_width=True)
+        st.subheader("📷 元画像とハイライト")
+
+        # OCR結果がある場合はハイライト表示
+        if ocr_result and ocr_result.get("success", False):
+            visualizer = OCRVisualizer()
+            # ハイライト表示（デフォルトでparagraphsレベル）
+            visualizer.display_ocr_results_with_highlights(image_file, ocr_result)
+        else:
+            st.error("OCR処理が失敗したため、ハイライト表示できません")
+            st.image(image_file, caption="元画像", use_column_width=True)
 
     with col2:
-        st.subheader(f"📝 OCR結果 {index + 1}")
+        st.subheader("📝 手書き内容の読み取り結果")
 
+        # OCR結果の表示（段落ごと）
         if ocr_result.get("success", False):
-            st.success("✅ OCR処理成功")
-
             # OCRデータの表示
             if "data" in ocr_result and ocr_result["data"]:
                 try:
                     # JSONデータをパースして表示
                     if isinstance(ocr_result["data"], str):
-                        data = json.loads(ocr_result["data"])
+                        ocr_data = json.loads(ocr_result["data"])
                     else:
-                        data = ocr_result["data"]
+                        ocr_data = ocr_result["data"]
 
-                    if isinstance(data, list) and len(data) > 0:
-                        item = data[0]
-                        st.markdown("**認識された内容:**")
-                        st.markdown(f"**課題:** {item.get('problem', 'なし')}")
-                        st.markdown(f"**個人:** {item.get('personal', 'なし')}")
-                        st.markdown(f"**地域:** {item.get('community', 'なし')}")
-                        st.markdown(f"**行政:** {item.get('gov', 'なし')}")
-                        st.markdown(f"**その他:** {item.get('others', 'なし')}")
-                    else:
-                        st.json(data)
+                    # データの種類に応じて表示
+                    source = ocr_result.get("source", "unknown")
+                    if source == "document_ai":
+                        # Document AI の結果表示 - paragraphsレベルのみ
+                        if ocr_data.get("pages") and ocr_data["pages"]:
+                            page = ocr_data["pages"][0]
+                            paragraphs = page.get("paragraphs", [])
 
-                except (json.JSONDecodeError, KeyError) as e:
-                    st.warning(f"データ表示エラー: {str(e)}")
-                    st.text(ocr_result.get("raw_text", "テキストなし"))
-            else:
-                st.text(ocr_result.get("raw_text", "テキストなし"))
-        else:
-            st.error("❌ OCR処理失敗")
-            st.error(ocr_result.get("error", "不明なエラー"))
+                            if paragraphs:
+                                st.info("各項目の手書き内容を確認し、必要に応じて修正してください。")
 
-    with col3:
-        st.subheader(f"🔧 修正結果 {index + 1}")
+                                # 段落を分類して表示
+                                current_category = None
+                                categorized_paragraphs = []
 
-        if correction_result and correction_result.get("success", False):
-            st.success("✅ 修正処理成功")
+                                for i, paragraph in enumerate(paragraphs):
+                                    if isinstance(paragraph, dict) and 'text' in paragraph:
+                                        text = paragraph['text'].strip()
 
-            # 修正データの表示
-            if "data" in correction_result and correction_result["data"]:
-                try:
-                    # JSONデータをパースして表示
-                    if isinstance(correction_result["data"], str):
-                        corrected_data = json.loads(correction_result["data"])
-                    else:
-                        corrected_data = correction_result["data"]
+                                        # 印刷されたラベルかどうかチェック
+                                        is_label = False
+                                        for label in PRINTED_LABELS:
+                                            if label in text or text in label:
+                                                is_label = True
+                                                # カテゴリを更新
+                                                for key, value in LABEL_MAPPING.items():
+                                                    if key in text:
+                                                        current_category = value
+                                                        break
+                                                break
 
-                    if isinstance(corrected_data, list) and len(corrected_data) > 0:
-                        corrected_item = corrected_data[0]
+                                        if not is_label and text:
+                                            # 手書き内容として処理
+                                            categorized_paragraphs.append({
+                                                'category': current_category or '未分類',
+                                                'text': text,
+                                                'confidence': paragraph.get('confidence', 0),
+                                                'index': i
+                                            })
 
-                        # OCR結果と修正結果を比較してハイライト表示
-                        if ocr_result.get("success", False) and "data" in ocr_result:
-                            try:
-                                if isinstance(ocr_result["data"], str):
-                                    original_data = json.loads(ocr_result["data"])
-                                else:
-                                    original_data = ocr_result["data"]
+                                # カテゴリごとにグループ化
+                                category_groups = {}
+                                for item in categorized_paragraphs:
+                                    category = item['category']
+                                    if category not in category_groups:
+                                        category_groups[category] = []
+                                    category_groups[category].append(item)
 
-                                if isinstance(original_data, list) and len(original_data) > 0:
-                                    original_item = original_data[0]
+                                # カテゴリアイコン
+                                category_icons = {
+                                    "あなたが考える現状の課題": "🎯",
+                                    "個人としてできること": "👤",
+                                    "地域としてできること": "👥",
+                                    "行政の役割": "🏛️",
+                                    "その他": "📌",
+                                    "未分類": "❓"
+                                }
 
-                                    st.markdown("**修正された内容:**")
+                                # 定義されたカテゴリの順序
+                                category_order = [
+                                    "あなたが考える現状の課題",
+                                    "個人としてできること",
+                                    "地域としてできること",
+                                    "行政の役割",
+                                    "その他"
+                                ]
 
-                                    # 各フィールドの差分をハイライト表示
-                                    for field in ["problem", "personal", "community", "gov", "others"]:
-                                        original_text = str(original_item.get(field, 'なし'))
-                                        corrected_text = str(corrected_item.get(field, 'なし'))
-
-                                        field_names = {
-                                            "problem": "課題",
-                                            "personal": "個人",
-                                            "community": "地域",
-                                            "gov": "行政",
-                                            "others": "その他"
+                                # カテゴリごとに表示（定義された順序で、空でも必ず表示）
+                                for category in category_order:
+                                    icon = category_icons.get(category, "❓")
+                                    if category in category_groups:
+                                        items = category_groups[category]
+                                        # 複数項目がある場合は改行で結合
+                                        combined_text = "\n".join([item['text'] for item in items])
+                                        # 最高信頼度を表示
+                                        max_confidence = max([item['confidence'] for item in items])
+                                        confidence_info = ""
+                                        if max_confidence > 0:
+                                            confidence_info = f" (信頼度: {max_confidence:.2%})"
+                                        # 一意のキーを生成
+                                        paragraph_key = f"paragraph_{index}_{category}_{int(time.time() * 1000000) % 1000000}"
+                                        # 編集可能なテキストエリア
+                                        edited_text = st.text_area(
+                                            f"{icon} {category}{confidence_info}",
+                                            combined_text,
+                                            height=100,
+                                            key=paragraph_key,
+                                            help="このテキストを直接編集できます"
+                                        )
+                                        # 編集されたテキストを保存（セッション状態に）
+                                        if f"edited_paragraphs_{index}" not in st.session_state:
+                                            st.session_state[f"edited_paragraphs_{index}"] = {}
+                                        st.session_state[f"edited_paragraphs_{index}"][category] = {
+                                            'text': edited_text,
+                                            'category': category,
+                                            'items': items
                                         }
-
-                                        display_field_comparison(field_names[field], original_text, corrected_text)
-                                else:
-                                    st.json(corrected_data)
-                            except (json.JSONDecodeError, KeyError):
-                                st.json(corrected_data)
-                        else:
-                            st.json(corrected_data)
+                                    else:
+                                        # 空のテキストエリア
+                                        paragraph_key = f"paragraph_{index}_{category}_empty_{int(time.time() * 1000000) % 1000000}"
+                                        edited_text = st.text_area(
+                                            f"{icon} {category}",
+                                            "",
+                                            height=100,
+                                            key=paragraph_key,
+                                            help="このテキストを直接編集できます",
+                                            placeholder="（未入力）"
+                                        )
+                                        # 編集されたテキストを保存
+                                        if f"edited_paragraphs_{index}" not in st.session_state:
+                                            st.session_state[f"edited_paragraphs_{index}"] = {}
+                                        if edited_text:  # 空でない場合のみ保存
+                                            st.session_state[f"edited_paragraphs_{index}"][category] = {
+                                                'text': edited_text,
+                                                'category': category,
+                                                'items': []
+                                            }
+                            else:
+                                st.warning("段落データが見つかりません")
+                    elif isinstance(ocr_data, list):
+                        # OpenAI の結果表示（構造化されたデータ）
+                        field_mapping = [
+                            ('problem', '🎯 あなたが考える現状の課題'),
+                            ('personal', '👤 個人としてできること'),
+                            ('community', '👥 地域としてできること'),
+                            ('gov', '🏛️ 行政の役割'),
+                            ('others', '📌 その他')
+                        ]
+                        for i, item in enumerate(ocr_data):
+                            if isinstance(item, dict):
+                                # すべてのフィールドを表示（空のフィールドも含む、順序通り）
+                                for field_key, display_label in field_mapping:
+                                    # 一意のキーを生成
+                                    unique_key = f"ocr_{index}_{i}_{field_key}_{int(time.time() * 1000000) % 1000000}"
+                                    # 値を取得（存在しない場合は空文字）
+                                    display_value = ""
+                                    if field_key in item:
+                                        try:
+                                            display_value = str(item[field_key]) if item[field_key] else ""
+                                        except UnicodeEncodeError:
+                                            display_value = str(item[field_key]).encode('utf-8', errors='ignore').decode('utf-8') if item[field_key] else ""
+                                    # 編集可能なテキストエリア（空でも表示）
+                                    edited_value = st.text_area(
+                                        display_label,
+                                        display_value,
+                                        height=80,
+                                        key=unique_key,
+                                        help="このテキストを直接編集できます",
+                                        placeholder="（未入力）" if not display_value else None
+                                    )
+                                    # 編集されたテキストを保存
+                                    if f"edited_items_{index}" not in st.session_state:
+                                        st.session_state[f"edited_items_{index}"] = {}
+                                    if i not in st.session_state[f"edited_items_{index}"]:
+                                        st.session_state[f"edited_items_{index}"][i] = {}
+                                    st.session_state[f"edited_items_{index}"][i][field_key] = edited_value
+                            else:
+                                st.text(str(item))
+                            if i < len(ocr_data) - 1:
+                                st.markdown("---")
                     else:
-                        st.json(corrected_data)
+                        st.json(ocr_data)
 
-                except (json.JSONDecodeError, KeyError) as e:
-                    st.warning(f"データ表示エラー: {str(e)}")
-                    st.text(correction_result.get("corrected_text", "修正テキストなし"))
+                except json.JSONDecodeError as e:
+                    st.error(f"OCR結果のJSONパースに失敗しました: {str(e)}")
+                    if "raw_text" in ocr_result:
+                        raw_key = f"raw_ocr_{index}_{int(time.time() * 1000000) % 1000000}"
+                        st.text_area("生のOCR結果", ocr_result["raw_text"], height=200, key=raw_key)
             else:
-                st.text(correction_result.get("corrected_text", "修正テキストなし"))
+                st.warning("OCRデータが見つかりません")
         else:
-            if correction_result:
-                st.error("❌ 修正処理失敗")
-                st.error(correction_result.get("error", "不明なエラー"))
-            else:
-                st.info("⏳ 修正処理待機中")
+            st.error(f"❌ OCR処理失敗: {ocr_result.get('error', '不明なエラー')}")
+
+        # AI修正結果の表示は削除（エラーのみ表示）
+        if correction_result and not correction_result.get("success", False):
+            error_msg = correction_result.get('error', '不明なエラー')
+            try:
+                display_error = str(error_msg)
+            except UnicodeEncodeError:
+                display_error = str(error_msg).encode('utf-8', errors='ignore').decode('utf-8')
+            st.error(f"❌ AI修正処理失敗: {display_error}")
+
+        # --- ここから保存ボタンと要約機能を追加 ---
+        st.markdown("---")
+        st.info("編集内容を保存し、要約AIに送信できます。\n（ボタンを押すと下に要約が表示されます）")
+        if st.button("💾 編集内容を保存して要約する", key=f"save_and_summarize_{index}"):
+            st.write("[LOG] 保存ボタンが押されました。編集内容を取得します…")
+            # 編集内容の取得
+            edited_data = {}
+            # Document AI
+            if ocr_result.get("source", "") == "document_ai":
+                for category in [
+                    "あなたが考える現状の課題",
+                    "個人としてできること",
+                    "地域としてできること",
+                    "行政の役割",
+                    "その他"
+                ]:
+                    key = f"edited_paragraphs_{index}"
+                    if key in st.session_state and category in st.session_state[key]:
+                        edited_data[category] = st.session_state[key][category]['text']
+            # OpenAI
+            elif ocr_result.get("source", "") == "openai":
+                key = f"edited_items_{index}"
+                if key in st.session_state:
+                    for i, item in st.session_state[key].items():
+                        for field_key, field_label in [
+                            ('problem', 'あなたが考える現状の課題'),
+                            ('personal', '個人としてできること'),
+                            ('community', '地域としてできること'),
+                            ('gov', '行政の役割'),
+                            ('others', 'その他')
+                        ]:
+                            if field_key in item:
+                                edited_data[field_label] = item[field_key]
+            st.write("[LOG] 編集内容:")
+            st.write(edited_data)
+            # OpenAI要約API呼び出し
+            st.write("[LOG] OpenAI要約APIを呼び出します…")
+            summary = summarize_with_openai(edited_data)
+            st.write("[LOG] 要約APIのレスポンス:")
+            st.write(summary)
+            st.session_state[f"summary_result_{index}"] = summary
+        # 要約結果の表示
+        summary_key = f"summary_result_{index}"
+        if summary_key in st.session_state:
+            st.markdown("---")
+            st.success("📝 AI要約結果:")
+            st.write(st.session_state[summary_key])
 
 
 def display_organization_results(organized_data: List[Dict[str, Any]]):
@@ -433,6 +612,13 @@ def main():
         padding: 2px 4px;
         border-radius: 3px;
     }
+    .mode-selector {
+        background-color: #e3f2fd;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        border-left: 4px solid #2196f3;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -440,14 +626,128 @@ def main():
     st.markdown("""
     <div class="main-header">
         <h1>🤖 改善提案シート文字起こしツール</h1>
-        <p>Document AI風ワークフロー - 段階的処理確認</p>
+        <p>Document AI風ワークフロー - Phase 2: 複数セクション対応</p>
     </div>
     """, unsafe_allow_html=True)
 
     # APIキーの確認
     if not check_api_key():
-        st.error("OpenAI APIキーが設定されていません。.envファイルにOPENAI_API_KEYを設定してください。")
+        st.error("Google Document AI設定が正しく設定されていません。.envファイルにGOOGLE_CLOUD_PROJECT_IDとGOOGLE_CLOUD_PROCESSOR_IDを設定してください。")
         st.stop()
+
+    # 処理モード選択
+    st.markdown('<div class="mode-selector">', unsafe_allow_html=True)
+    st.subheader("🎯 処理モード選択")
+
+    processing_mode = st.radio(
+        "処理モードを選択してください:",
+        ["📄 単一セクション処理 (Phase 1)", "📑 複数セクション処理 (Phase 2)"],
+        help="Phase 1: 1by1データ用の単一セクション処理\nPhase 2: 1personデータ用の複数セクション処理"
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    if processing_mode == "📑 複数セクション処理 (Phase 2)":
+        # Phase 2: 複数セクション処理モード
+        display_multi_section_mode()
+    else:
+        # Phase 1: 単一セクション処理モード（既存の処理）
+        display_single_section_mode()
+
+
+def display_multi_section_mode():
+    """複数セクション処理モードの表示"""
+    st.header("📑 複数セクション処理モード (Phase 2)")
+
+    # セッション状態の初期化
+    if 'multi_processor' not in st.session_state:
+        st.session_state.multi_processor = MultiSectionProcessor()
+    if 'multi_processing_complete' not in st.session_state:
+        st.session_state.multi_processing_complete = False
+
+    # ファイルアップロード
+    st.subheader("📁 複数セクション画像アップロード")
+    uploaded_image = st.file_uploader(
+        "複数セクションが含まれた改善提案シート画像をアップロード",
+        type=['jpg', 'jpeg', 'png', 'gif', 'webp'],
+        help="1personディレクトリのような複数セクションが含まれた画像をアップロードしてください"
+    )
+
+    if uploaded_image:
+        st.success(f"✅ 画像ファイル '{uploaded_image.name}' が準備完了")
+
+        # 処理実行ボタン
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("🚀 複数セクション処理を開始", type="primary"):
+                with st.spinner("複数セクション処理を実行中..."):
+                    result = st.session_state.multi_processor.process_multi_section_image(uploaded_image)
+                    if result.get("success", False):
+                        st.session_state.multi_processing_complete = True
+                        st.rerun()
+
+        with col2:
+            if st.button("🔄 処理結果をリセット"):
+                st.session_state.multi_processor._reset_processing_state()
+                st.session_state.multi_processing_complete = False
+                st.success("処理結果をリセットしました。")
+                st.rerun()
+
+        # 処理結果の表示
+        if st.session_state.multi_processing_complete:
+            st.markdown("---")
+
+            # タブで結果表示を切り替え
+            tab1, tab2, tab3, tab4, tab5 = st.tabs([
+                "🔍 セクション分析",
+                "📝 OCR結果",
+                "✏️ 修正",
+                "📊 サマリー",
+                "💾 エクスポート"
+            ])
+
+            with tab1:
+                st.session_state.multi_processor.display_section_analysis_results()
+
+            with tab2:
+                st.session_state.multi_processor.display_section_ocr_results()
+
+            with tab3:
+                st.session_state.multi_processor.display_section_correction_interface()
+
+            with tab4:
+                st.session_state.multi_processor.display_category_summary()
+
+            with tab5:
+                st.session_state.multi_processor.display_export_options()
+
+    else:
+        st.warning("複数セクションが含まれた改善提案シートの画像をアップロードしてください。")
+
+        # サンプル画像の説明
+        with st.expander("📖 複数セクション処理について"):
+            st.markdown("""
+            **Phase 2: 複数セクション処理機能**
+
+            この機能は、1つの画像に複数のセクション（課題、提案、対象など）が含まれた
+            改善提案シートを自動的に分析・処理します。
+
+            **主な機能:**
+            - 🔍 **自動セクション検出**: 画像内の複数セクションを自動検出
+            - ✂️ **セクション分割**: 検出されたセクションを個別に切り出し
+            - 📝 **一括OCR処理**: 各セクションに対してOCR処理を実行
+            - 🏷️ **自動カテゴリ分類**: セクション内容に基づいて自動分類
+            - ✏️ **個別修正機能**: セクションごとの内容修正
+            - 📊 **カテゴリ別サマリー**: 分類されたセクションの統計表示
+            - 💾 **構造化エクスポート**: JSON/Markdownでの結果出力
+
+            **対象データ:** `kaizen_teian_sheets/1person/` のような複数セクション画像
+            """)
+
+
+def display_single_section_mode():
+    """単一セクション処理モードの表示（既存の処理）"""
+    st.header("📄 単一セクション処理モード (Phase 1)")
 
     # セッション状態の初期化
     if 'workflow_step' not in st.session_state:
@@ -478,9 +778,9 @@ def main():
     st.markdown('</div>', unsafe_allow_html=True)
 
     # ファイルアップロード（改善提案シートのみ）
-    st.header("📁 ファイルアップロード")
+    st.subheader("📁 ファイルアップロード")
 
-    st.subheader("改善提案シート（必須）")
+    st.write("改善提案シート（必須）")
     uploaded_images = st.file_uploader(
         "手書きの改善提案シート画像をアップロード",
         type=['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'],
@@ -502,7 +802,7 @@ def main():
         st.stop()
 
     # 処理ボタン群
-    st.header("🚀 処理実行")
+    st.subheader("🚀 処理実行")
 
     col1, col2, col3 = st.columns(3)
 
@@ -585,7 +885,7 @@ def main():
                     display_image_ocr_correction_result(image_file, ocr_result, correction_result, i)
         else:
             # 処理2が未完了の場合は通常表示
-            st.header("📷 ステップ1: OCR処理 + 文字修正結果")
+            st.subheader("📷 ステップ1: OCR処理 + 文字修正結果")
 
             successful_ocr = [r for r in st.session_state.ocr_results if r.get("success", False)]
             successful_corrections = [r for r in st.session_state.corrected_results if r and r.get("success", False)]
@@ -604,41 +904,77 @@ def main():
     if st.session_state.workflow_step >= 2 and st.session_state.organized_data and st.session_state.final_markdown:
         st.header("📊 ステップ2: データ整理 + レポート生成結果")
 
-        # 整理結果の表示
+        # 整理されたデータの表示
         display_organization_results(st.session_state.organized_data)
 
-        st.markdown("---")
+        # 最終レポートの表示とダウンロード
+        st.subheader("📄 最終レポート")
 
-        # 統計情報
-        st.subheader("📈 処理統計")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2 = st.columns([3, 1])
+
         with col1:
-            st.metric("処理画像数", len(valid_images))
+            st.markdown(st.session_state.final_markdown)
+
         with col2:
-            st.metric("識別課題数", len(st.session_state.organized_data))
-        with col3:
-            successful_ocr = [r for r in st.session_state.ocr_results if r.get("success", False)]
-            st.metric("OCR成功率", f"{len(successful_ocr)/len(valid_images)*100:.1f}%")
-        with col4:
-            solutions_count = sum(1 for item in st.session_state.organized_data
-                                if any(item.get(field) for field in ["personal", "community", "gov", "others"]))
-            st.metric("解決策有り", f"{solutions_count}/{len(st.session_state.organized_data)}")
+            st.download_button(
+                label="📥 Markdownファイルをダウンロード",
+                data=st.session_state.final_markdown,
+                file_name=f"kaizen_teian_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                mime="text/markdown"
+            )
 
-        # 最終レポートプレビュー
-        st.subheader("📄 最終レポートプレビュー")
-        st.markdown(st.session_state.final_markdown)
+            # JSONデータのダウンロード
+            json_data = json.dumps(st.session_state.organized_data, ensure_ascii=False, indent=2)
+            st.download_button(
+                label="📥 JSONファイルをダウンロード",
+                data=json_data,
+                file_name=f"kaizen_teian_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                mime="application/json"
+            )
 
-        # ダウンロードボタン
-        st.subheader("💾 ダウンロード")
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"改善提案シート_整理結果_{timestamp}.md"
 
-        st.download_button(
-            label="📥 Markdownファイルをダウンロード",
-            data=st.session_state.final_markdown,
-            file_name=filename,
-            mime="text/markdown"
+def summarize_with_openai(edited_data: dict) -> str:
+    """
+    編集内容をOpenAIの要約プロンプトに投げて要約を取得する関数。
+    """
+    import openai
+    import os
+    import json
+    # ログ
+    st.write("[LOG] summarize_with_openai() 呼び出し")
+    # APIキー取得
+    openai_api_key = os.environ.get("OPENAI_API_KEY")
+    if not openai_api_key:
+        st.error("OpenAI APIキーが設定されていません。環境変数 OPENAI_API_KEY を設定してください。")
+        return "APIキー未設定"
+    openai.api_key = openai_api_key
+    # プロンプト作成
+    prompt = """
+あなたは日本語の要約AIです。以下の各項目の内容を簡潔にまとめてください。
+
+"""
+    for k, v in edited_data.items():
+        prompt += f"【{k}】\n{v}\n"
+    prompt += "\n全体を200文字以内で要約してください。"
+    st.write("[LOG] プロンプト:")
+    st.write(prompt)
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "あなたは日本語の要約AIです。"},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=256,
+            temperature=0.3
         )
+        summary = response["choices"][0]["message"]["content"].strip()
+        st.write("[LOG] OpenAI APIレスポンス:")
+        st.write(summary)
+        return summary
+    except Exception as e:
+        st.error(f"OpenAI API呼び出しでエラー: {e}")
+        return f"要約失敗: {e}"
 
 
 if __name__ == "__main__":

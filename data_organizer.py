@@ -32,7 +32,12 @@ class DataOrganizer:
         formatted_entries = []
 
         for i, entry in enumerate(corrected_data):
-            formatted_entry = f"[image{i+1}]\n{json.dumps(entry, indent=2, ensure_ascii=False)}"
+            # ASCII codec エラーを防ぐため、安全な文字列処理
+            try:
+                formatted_entry = f"[image{i+1}]\n{json.dumps(entry, indent=2, ensure_ascii=False)}"
+            except UnicodeEncodeError:
+                # エンコードエラーが発生した場合は、安全な方法で処理
+                formatted_entry = f"[image{i+1}]\n{json.dumps(entry, indent=2, ensure_ascii=True)}"
             formatted_entries.append(formatted_entry)
 
         return "\n\n".join(formatted_entries)
@@ -97,9 +102,15 @@ class DataOrganizer:
                 }
 
         except Exception as e:
+            # エラーメッセージも安全に処理
+            try:
+                error_msg = str(e)
+            except UnicodeEncodeError:
+                error_msg = str(e).encode('utf-8', errors='ignore').decode('utf-8')
+
             return {
                 "success": False,
-                "error": str(e),
+                "error": error_msg,
                 "organized_text": "",
                 "input_data": formatted_input if 'formatted_input' in locals() else ""
             }

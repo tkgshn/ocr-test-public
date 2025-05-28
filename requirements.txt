@@ -4,3 +4,7 @@ pillow==10.4.0
 python-dotenv==1.0.1
 requests==2.32.3
 httpx==0.24.1
+google-cloud-documentai==3.5.0
+opencv-python==4.10.0.84
+numpy>=1.23.5,<2.0.0
+google-auth==2.35.0

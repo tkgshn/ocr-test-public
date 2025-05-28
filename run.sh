@@ -5,6 +5,11 @@
 echo "🤖 改善提案シート文字起こしツール"
 echo "================================"
 
+# 環境変数を設定してUnicodeエンコーディングの問題を解決
+export PYTHONIOENCODING=utf-8
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
+
 # 仮想環境の確認
 if [ ! -d "venv" ]; then
     echo "仮想環境が見つかりません。セットアップを実行します..."
@@ -37,6 +42,9 @@ fi
 echo "🚀 アプリケーションを起動します..."
 echo "ブラウザで http://localhost:8501 にアクセスしてください"
 echo ""
+
+# 仮想環境をアクティベート
+source venv/bin/activate
 
 # Streamlitアプリケーションの起動
 venv/bin/python -m streamlit run app.py
