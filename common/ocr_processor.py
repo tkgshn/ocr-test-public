@@ -63,15 +63,32 @@ class OCRProcessor:
 
             # 認証設定
             credentials = None
-            if config.GOOGLE_APPLICATION_CREDENTIALS:
-                # サービスアカウントキーファイルを使用
+            
+            # Streamlit secretsからサービスアカウント情報を取得
+            try:
+                import streamlit as st
+                if hasattr(st, 'secrets') and 'google_service_account' in st.secrets:
+                    # st.secretsからサービスアカウント情報を作成
+                    service_account_info = dict(st.secrets["google_service_account"])
+                    credentials = service_account.Credentials.from_service_account_info(
+                        service_account_info
+                    )
+                    print("Using credentials from Streamlit secrets")
+            except Exception as e:
+                print(f"Could not load credentials from st.secrets: {e}")
+            
+            # 環境変数のファイルパスから読み込み
+            if not credentials and config.GOOGLE_APPLICATION_CREDENTIALS:
                 if os.path.exists(config.GOOGLE_APPLICATION_CREDENTIALS):
                     credentials = service_account.Credentials.from_service_account_file(
                         config.GOOGLE_APPLICATION_CREDENTIALS
                     )
+                    print(f"Using credentials from file: {config.GOOGLE_APPLICATION_CREDENTIALS}")
                 else:
                     print(f"Warning: Service account file not found: {config.GOOGLE_APPLICATION_CREDENTIALS}")
-            # else: Application Default Credentials (ADC) を使用
+            
+            if not credentials:
+                print("Warning: No credentials found. Attempting to use Application Default Credentials.")
 
             # Document AI client の初期化
             endpoint = config.GOOGLE_CLOUD_DOCUMENTAI_ENDPOINT
