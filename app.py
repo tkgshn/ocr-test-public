@@ -2,8 +2,9 @@
 改善提案シート文字起こしツール - Document AI風UI
 Streamlitアプリケーション
 """
-import streamlit as st
+import sys
 import os
+import streamlit as st
 import json
 import difflib
 from datetime import datetime
@@ -19,6 +20,13 @@ import time
 import hashlib
 from PIL import Image
 import io
+
+# Streamlit Cloud環境ではst.secretsからenvをセット
+if hasattr(st, "secrets") and st.secrets:
+    for key, value in st.secrets.items():
+        os.environ[key] = str(value)
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 
 def check_api_key() -> bool:
