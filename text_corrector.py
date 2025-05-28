@@ -19,25 +19,38 @@ class TextCorrector:
         """
         self.client = OpenAI(api_key=config.OPENAI_API_KEY)
 
-    def correct_single_result(self, ocr_result: str, reference_texts: Optional[List[str]] = None) -> Dict[str, Any]:
+    def correct_single_result(self, ocr_result: Dict[str, Any], reference_texts: Optional[List[str]] = None) -> Dict[str, Any]:
         """
         単一のOCR結果を修正する
 
         Args:
-            ocr_result: 修正対象のOCR結果（JSON文字列）
+            ocr_result: 修正対象のOCR結果（Dict形式）
             reference_texts: 参考資料のテキストリスト
 
         Returns:
             Dict[str, Any]: 修正結果
         """
         try:
+            # OCRが成功していない場合は修正しない
+            if not ocr_result.get("success", False):
+                return {
+                    "success": False,
+                    "error": "OCR処理が失敗しているため修正できません",
+                    "corrected_text": "",
+                    "original_text": ""
+                }
+
+            # OCRデータをJSON文字列として取得
+            ocr_data = ocr_result.get("data", [])
+            raw_text = json.dumps(ocr_data, ensure_ascii=False, indent=2)
+
             # 参考資料の情報を含めたプロンプトを作成
             reference_info = ""
             if reference_texts:
                 reference_info = f"\n参考資料:\n{chr(10).join(reference_texts)}"
 
             prompt = config.CORRECTION_SYSTEM_PROMPT.format(
-                ocr_result=ocr_result
+                ocr_result=raw_text
             ) + reference_info
 
             # OpenAI APIに送信
@@ -50,7 +63,7 @@ class TextCorrector:
                     },
                     {
                         "role": "user",
-                        "content": f"以下のOCR結果を修正してください:\n{ocr_result}"
+                        "content": f"以下のOCR結果を修正してください:\n{raw_text}"
                     }
                 ],
                 temperature=config.TEMPERATURE_CORRECTION,
@@ -75,14 +88,14 @@ class TextCorrector:
                     "success": True,
                     "data": corrected_json,
                     "corrected_text": corrected_text,
-                    "original_text": ocr_result
+                    "original_text": raw_text
                 }
             except json.JSONDecodeError as e:
                 return {
                     "success": False,
                     "error": f"修正結果のJSONパースエラー: {str(e)}",
                     "corrected_text": corrected_text,
-                    "original_text": ocr_result
+                    "original_text": raw_text
                 }
 
         except Exception as e:
@@ -90,7 +103,7 @@ class TextCorrector:
                 "success": False,
                 "error": str(e),
                 "corrected_text": "",
-                "original_text": ocr_result
+                "original_text": ocr_result.get("raw_text", "")
             }
 
     def correct_multiple_results(self, ocr_results: List[Dict[str, Any]], reference_texts: Optional[List[str]] = None) -> List[Dict[str, Any]]:
@@ -111,19 +124,16 @@ class TextCorrector:
 
             if ocr_result.get("success", False):
                 # OCRが成功した場合のみ修正処理を実行
-                # OCRデータをJSON文字列として取得
-                ocr_data = ocr_result.get("data", [])
-                raw_text = json.dumps(ocr_data, ensure_ascii=False, indent=2)
-
-                correction_result = self.correct_single_result(raw_text, reference_texts)
-
-                # 元のOCR結果に修正結果を追加
-                result = ocr_result.copy()
-                result["correction"] = correction_result
-                corrected_results.append(result)
+                correction_result = self.correct_single_result(ocr_result, reference_texts)
+                corrected_results.append(correction_result)
             else:
-                # OCRが失敗した場合はそのまま追加
-                corrected_results.append(ocr_result)
+                # OCRが失敗した場合は失敗結果を返す
+                corrected_results.append({
+                    "success": False,
+                    "error": "OCR処理が失敗しているため修正できません",
+                    "corrected_text": "",
+                    "original_text": ""
+                })
 
         return corrected_results
 
@@ -140,10 +150,8 @@ class TextCorrector:
         successful_data = []
 
         for result in corrected_results:
-            if (result.get("success", False) and
-                result.get("correction", {}).get("success", False)):
-
-                correction_data = result["correction"]["data"]
+            if result.get("success", False):
+                correction_data = result.get("data", [])
                 # リスト形式でない場合はリストに変換
                 if isinstance(correction_data, list):
                     successful_data.extend(correction_data)
