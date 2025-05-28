@@ -1,3 +1,5 @@
+[![DeepWiki](https://img.shields.io/badge/DeepWiki-View-blue?logo=readthedocs&style=flat-square)](https://deepwiki.com/tkgshn/ocr-test-public)
+
 # 改善提案シート OCR システム
 
 Google Document AI を使用した改善提案シートの文字起こしシステムです。
@@ -132,39 +134,44 @@ streamlit run app.py
 
 ## API 仕様
 
-### OCRProcessor
+### Phase 1: 単一セクション処理
 
 ```python
-from ocr_processor import OCRProcessor
+from common.ocr_processor import OCRProcessor
+from phase1.text_corrector import TextCorrector
+from phase1.data_organizer import DataOrganizer
+from phase1.markdown_formatter import MarkdownFormatter
 
-# 初期化
+# OCR処理
 processor = OCRProcessor()
-
-# 単一画像処理
 result = processor.process_single_image(image_file)
 
-# 複数画像処理
-results = processor.process_multiple_images(image_files)
+# テキスト修正
+corrector = TextCorrector()
+corrected = corrector.correct_single_result(result)
+
+# データ整理
+organizer = DataOrganizer()
+organized = organizer.organize_data([corrected])
+
+# Markdown出力
+formatter = MarkdownFormatter()
+markdown = formatter.format_to_markdown(organized)
 ```
 
-### SectionAnalyzer
+### Phase 2: 複数セクション処理
 
 ```python
-from section_analyzer import SectionAnalyzer
+from phase2.section_analyzer import SectionAnalyzer
+from phase2.multi_section_processor import MultiSectionProcessor
 
 # セクション分析
 analyzer = SectionAnalyzer()
-sections = analyzer.analyze_sections(image)
-```
-
-### MultiSectionProcessor
-
-```python
-from multi_section_processor import MultiSectionProcessor
+sections = analyzer.analyze_image_layout(image)
 
 # 複数セクション処理
 processor = MultiSectionProcessor()
-result = processor.process_document(image_file)
+result = processor.process_multi_section_image(image_file)
 ```
 
 ## トラブルシューティング
@@ -193,7 +200,7 @@ result = processor.process_document(image_file)
 
 - `.env`ファイルに`OPENAI_API_KEY`が設定されているか確認
 - API キーが有効か確認
-- 注意: OpenAI APIはOCR処理ではなく、文字修正と要約機能のみに使用されます
+- 注意: OpenAI API は OCR 処理ではなく、文字修正と要約機能のみに使用されます
 
 ## 開発情報
 
@@ -203,13 +210,19 @@ result = processor.process_document(image_file)
 OCR_test/
 ├── app.py                      # メインアプリケーション
 ├── config.py                   # 設定ファイル
-├── ocr_processor.py           # OCR処理クラス
-├── ocr_visualizer.py          # OCR結果可視化
-├── section_analyzer.py        # セクション分析
-├── multi_section_processor.py # 複数セクション処理
-├── text_corrector.py          # テキスト修正
-├── data_organizer.py          # データ整理
-├── markdown_formatter.py      # Markdown変換
+├── common/                     # 共通コンポーネント
+│   ├── __init__.py
+│   ├── ocr_processor.py        # OCR処理クラス（Document AI）
+│   └── ocr_visualizer.py       # OCR結果可視化
+├── phase1/                     # Phase 1: 単一セクション処理
+│   ├── __init__.py
+│   ├── text_corrector.py       # テキスト修正（OpenAI）
+│   ├── data_organizer.py       # データ整理
+│   └── markdown_formatter.py   # Markdown変換
+├── phase2/                     # Phase 2: 複数セクション処理
+│   ├── __init__.py
+│   ├── section_analyzer.py     # セクション分析（OpenCV）
+│   └── multi_section_processor.py # 複数セクション統合処理
 ├── requirements.txt           # 依存関係
 ├── env_example.txt           # 環境変数例
 └── README.md                 # このファイル
