@@ -1,9 +1,12 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 """
 改善提案シート文字起こしツール - Document AI風UI
 Streamlitアプリケーション
 """
 import streamlit as st
-import os
 import json
 import difflib
 from datetime import datetime
