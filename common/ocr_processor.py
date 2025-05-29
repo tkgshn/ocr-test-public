@@ -85,10 +85,22 @@ class OCRProcessor:
             # エンドポイントURLを正しく構築（httpsプロトコルは含めない）
             opts = ClientOptions(api_endpoint=endpoint)
 
+            # タイムアウト設定を追加
+            from google.api_core import retry
+            import grpc
+            
+            # gRPCチャンネルオプションを設定
+            channel_options = [
+                ('grpc.keepalive_time_ms', 30000),
+                ('grpc.keepalive_timeout_ms', 10000),
+                ('grpc.keepalive_permit_without_calls', True),
+                ('grpc.http2.max_pings_without_data', 0),
+            ]
+
             if credentials:
                 self.documentai_client = documentai.DocumentProcessorServiceClient(
                     client_options=opts,
-                    credentials=credentials
+                    credentials=credentials,
                 )
             else:
                 # ADCを使用
@@ -189,8 +201,25 @@ class OCRProcessor:
                 process_options=process_options
             )
 
-            # Document AI で処理
-            result = self.documentai_client.process_document(request=request)
+            # Document AI で処理（タイムアウトとリトライ設定付き）
+            from google.api_core import retry
+            
+            # カスタムリトライ設定
+            custom_retry = retry.Retry(
+                initial=1.0,
+                maximum=60.0,
+                multiplier=2.0,
+                predicate=retry.if_exception_type(
+                    Exception,
+                ),
+                deadline=120.0  # 120秒でタイムアウト
+            )
+            
+            result = self.documentai_client.process_document(
+                request=request,
+                retry=custom_retry,
+                timeout=120.0
+            )
             document = result.document
 
             # 結果を構造化
