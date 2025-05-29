@@ -20,7 +20,9 @@ import streamlit as st
 try:
     from google.api_core.client_options import ClientOptions
     from google.cloud import documentai
+    DOCUMENTAI_AVAILABLE = True
 except ImportError:
+    DOCUMENTAI_AVAILABLE = False
     print("Error: Google Document AI not available. Install with: pip install google-cloud-documentai google-auth")
     raise ImportError("Google Document AI is required for this application")
 
